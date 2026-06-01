@@ -1,14 +1,31 @@
 import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import type { Metadata, Viewport } from "next"
+import { Space_Grotesk, Space_Mono } from "next/font/google"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+})
+
+const spaceMono = Space_Mono({ 
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
-  title: "Lovy-tech | Smart Glasses OS",
-  description: "Advanced e-OS system for smart glasses with real-time performance tracking",
-    generator: 'v0.app'
+  title: "VibeOS | Solo Founder Command Center",
+  description: "Your AI-powered startup toolkit - Calendar, Tasks, Notes, Analytics, Chat, Files & Settings in one funky interface",
+  generator: "v0.app",
+}
+
+export const viewport: Viewport = {
+  themeColor: "#ff00aa",
+  width: "device-width",
+  initialScale: 1,
 }
 
 export default function RootLayout({
@@ -17,9 +34,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="bg-background">
+      <body className={`${spaceGrotesk.variable} ${spaceMono.variable} font-sans antialiased`}>
+        {children}
+      </body>
     </html>
   )
 }
-
