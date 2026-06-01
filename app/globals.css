@@ -3,74 +3,78 @@
 @tailwind utilities;
 
 :root {
-  /* Lisa Frank Y2K Neobrutalism Theme */
-  --background: 320 100% 95%; /* Light pink background */
-  --foreground: 280 100% 15%; /* Deep purple text */
+  /* ENHANCED Lisa Frank Y2K Neobrutalism Theme - MORE VIBRANT */
+  --background: 300 100% 97%; /* Brighter pink-white */
+  --foreground: 280 100% 10%; /* Deep purple-black */
   
-  --card: 180 100% 90%; /* Cyan card */
-  --card-foreground: 280 100% 15%;
+  --card: 0 0% 100%; /* Pure white cards */
+  --card-foreground: 280 100% 10%;
   
-  --popover: 60 100% 90%; /* Yellow popover */
-  --popover-foreground: 280 100% 15%;
+  --popover: 60 100% 95%; /* Bright yellow popover */
+  --popover-foreground: 280 100% 10%;
   
-  --primary: 320 100% 50%; /* Hot pink */
+  --primary: 330 100% 55%; /* SUPER hot pink */
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 180 100% 50%; /* Electric cyan */
-  --secondary-foreground: 280 100% 15%;
+  --secondary: 185 100% 50%; /* Pure electric cyan */
+  --secondary-foreground: 280 100% 10%;
   
-  --muted: 270 80% 85%; /* Light purple */
-  --muted-foreground: 280 60% 35%;
+  --muted: 270 60% 92%; /* Soft lavender */
+  --muted-foreground: 280 50% 40%;
   
-  --accent: 60 100% 50%; /* Sunny yellow */
-  --accent-foreground: 280 100% 15%;
+  --accent: 50 100% 55%; /* Bright sunny yellow */
+  --accent-foreground: 280 100% 10%;
   
-  --destructive: 0 100% 50%;
+  --destructive: 0 100% 55%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 280 100% 25%;
+  --border: 280 100% 15%; /* Near-black purple for THICK borders */
   --input: 0 0% 100%;
-  --ring: 320 100% 50%;
+  --ring: 330 100% 55%;
   
-  /* Y2K Neobrutalism extras */
-  --lime: 90 100% 50%;
-  --electric-blue: 210 100% 55%;
-  --hot-orange: 25 100% 55%;
-  --neon-purple: 280 100% 60%;
+  /* Y2K Neon Palette - EXTRA BRIGHT */
+  --lime: 85 100% 55%;
+  --electric-blue: 200 100% 55%;
+  --hot-orange: 25 100% 60%;
+  --neon-purple: 280 100% 65%;
+  --neon-green: 140 100% 50%;
+  --magenta: 310 100% 55%;
+  --coral: 15 100% 65%;
   
-  --radius: 0.75rem;
-  --border-width: 3px;
+  /* Neobrutalism specs - CHUNKIER */
+  --radius: 0.5rem;
+  --border-width: 4px;
   --shadow-offset: 6px;
 }
 
 .dark {
-  --background: 280 60% 8%;
-  --foreground: 320 100% 90%;
+  --background: 280 50% 5%;
+  --foreground: 330 100% 95%;
   
-  --card: 280 50% 15%;
-  --card-foreground: 320 100% 90%;
+  --card: 280 40% 12%;
+  --card-foreground: 330 100% 95%;
   
-  --popover: 280 50% 12%;
-  --popover-foreground: 320 100% 90%;
+  --popover: 280 40% 10%;
+  --popover-foreground: 330 100% 95%;
   
-  --primary: 320 100% 60%;
-  --primary-foreground: 280 100% 10%;
+  --primary: 330 100% 60%;
+  --primary-foreground: 280 100% 5%;
   
-  --secondary: 180 100% 45%;
-  --secondary-foreground: 280 100% 10%;
+  --secondary: 185 100% 55%;
+  --secondary-foreground: 280 100% 5%;
   
-  --muted: 280 40% 20%;
-  --muted-foreground: 320 60% 70%;
+  --muted: 280 30% 18%;
+  --muted-foreground: 330 50% 75%;
   
-  --accent: 60 100% 55%;
-  --accent-foreground: 280 100% 10%;
+  --accent: 50 100% 60%;
+  --accent-foreground: 280 100% 5%;
   
-  --destructive: 0 100% 45%;
+  --destructive: 0 100% 50%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 320 80% 50%;
-  --input: 280 40% 20%;
-  --ring: 320 100% 60%;
+  --border: 330 100% 60%;
+  --input: 280 30% 18%;
+  --ring: 330 100% 60%;
 }
 
 @layer base {
@@ -79,21 +83,66 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  html {
+    @apply bg-background;
+  }
+}
+
+@layer components {
+  /* Neo-brutalist card */
+  .neo-card {
+    @apply bg-card border-4 border-foreground rounded-lg;
+    box-shadow: 6px 6px 0 0 hsl(var(--foreground));
+  }
+  
+  /* Neo-brutalist button */
+  .neo-btn {
+    @apply font-bold border-4 border-foreground rounded-lg px-4 py-2;
+    box-shadow: 4px 4px 0 0 hsl(var(--foreground));
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  
+  .neo-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 hsl(var(--foreground));
+  }
+  
+  .neo-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 0 hsl(var(--foreground));
+  }
+  
+  /* Neo input */
+  .neo-input {
+    @apply border-4 border-foreground rounded-lg bg-card px-4 py-2;
+    box-shadow: 4px 4px 0 0 hsl(var(--foreground));
+  }
+  
+  .neo-input:focus {
+    @apply outline-none ring-0;
+    box-shadow: 4px 4px 0 0 hsl(var(--primary));
+    border-color: hsl(var(--primary));
   }
 }
 
 @layer utilities {
-  /* Neobrutalist shadow utilities */
+  /* Neobrutalist shadow utilities - CHUNKIER */
   .neo-shadow {
-    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 0 hsl(var(--border));
+    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 0 hsl(var(--foreground));
   }
   
   .neo-shadow-sm {
-    box-shadow: 3px 3px 0 0 hsl(var(--border));
+    box-shadow: 3px 3px 0 0 hsl(var(--foreground));
   }
   
   .neo-shadow-lg {
-    box-shadow: 8px 8px 0 0 hsl(var(--border));
+    box-shadow: 8px 8px 0 0 hsl(var(--foreground));
+  }
+  
+  .neo-shadow-xl {
+    box-shadow: 10px 10px 0 0 hsl(var(--foreground));
   }
   
   .neo-shadow-primary {
@@ -108,35 +157,44 @@
     box-shadow: var(--shadow-offset) var(--shadow-offset) 0 0 hsl(var(--accent));
   }
   
-  /* Thick borders */
+  /* Thick borders - 4px default */
   .neo-border {
-    border: var(--border-width) solid hsl(var(--border));
+    border: var(--border-width) solid hsl(var(--foreground));
   }
   
   .neo-border-primary {
     border: var(--border-width) solid hsl(var(--primary));
   }
   
+  .neo-border-secondary {
+    border: var(--border-width) solid hsl(var(--secondary));
+  }
+  
+  .neo-border-accent {
+    border: var(--border-width) solid hsl(var(--accent));
+  }
+  
   /* Hover transforms */
   .neo-hover {
-    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
   }
   
   .neo-hover:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 0 hsl(var(--border));
+    transform: translate(-3px, -3px);
+    box-shadow: calc(var(--shadow-offset) + 3px) calc(var(--shadow-offset) + 3px) 0 0 hsl(var(--foreground));
   }
   
   .neo-hover:active {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0 0 hsl(var(--border));
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0 0 hsl(var(--foreground));
   }
   
-  /* Y2K gradient backgrounds */
+  /* Y2K gradient backgrounds - MORE VIBRANT */
   .y2k-gradient {
     background: linear-gradient(135deg, 
       hsl(var(--primary)) 0%, 
-      hsl(var(--neon-purple)) 50%, 
+      hsl(var(--magenta)) 35%,
+      hsl(var(--neon-purple)) 70%, 
       hsl(var(--secondary)) 100%
     );
   }
@@ -144,7 +202,8 @@
   .y2k-gradient-warm {
     background: linear-gradient(135deg,
       hsl(var(--primary)) 0%,
-      hsl(var(--hot-orange)) 50%,
+      hsl(var(--coral)) 35%,
+      hsl(var(--hot-orange)) 70%,
       hsl(var(--accent)) 100%
     );
   }
@@ -152,26 +211,53 @@
   .y2k-gradient-cool {
     background: linear-gradient(135deg,
       hsl(var(--secondary)) 0%,
-      hsl(var(--electric-blue)) 50%,
+      hsl(var(--electric-blue)) 35%,
+      hsl(var(--neon-purple)) 70%,
+      hsl(var(--magenta)) 100%
+    );
+  }
+  
+  .y2k-gradient-rainbow {
+    background: linear-gradient(90deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--hot-orange)) 16%,
+      hsl(var(--accent)) 32%,
+      hsl(var(--lime)) 48%,
+      hsl(var(--secondary)) 64%,
+      hsl(var(--electric-blue)) 80%,
       hsl(var(--neon-purple)) 100%
     );
   }
   
-  /* Checkerboard pattern */
+  /* Checkerboard pattern - larger */
   .checkerboard {
     background-image: 
       linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%),
       linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%),
       linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%),
       linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
   }
   
-  /* Polka dots */
+  /* Polka dots - more prominent */
   .polka-dots {
-    background-image: radial-gradient(hsl(var(--primary) / 0.3) 2px, transparent 2px);
+    background-image: radial-gradient(hsl(var(--primary) / 0.25) 4px, transparent 4px);
+    background-size: 24px 24px;
+  }
+  
+  .polka-dots-dense {
+    background-image: radial-gradient(hsl(var(--primary) / 0.3) 3px, transparent 3px);
     background-size: 16px 16px;
+  }
+  
+  /* Stars pattern */
+  .stars-pattern {
+    background-image: 
+      radial-gradient(hsl(var(--accent)) 1px, transparent 1px),
+      radial-gradient(hsl(var(--primary)) 1px, transparent 1px);
+    background-size: 40px 40px, 60px 60px;
+    background-position: 0 0, 20px 20px;
   }
   
   /* Wavy text animation */
@@ -191,7 +277,7 @@
   
   @keyframes bounceIn {
     0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.1); }
+    60% { transform: scale(1.15); }
     100% { transform: scale(1); opacity: 1; }
   }
   
@@ -202,8 +288,8 @@
   
   @keyframes wiggle {
     0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-3deg); }
-    75% { transform: rotate(3deg); }
+    25% { transform: rotate(-5deg); }
+    75% { transform: rotate(5deg); }
   }
   
   /* Pop animation for buttons */
@@ -213,27 +299,46 @@
   
   @keyframes pop {
     0% { transform: scale(1); }
-    50% { transform: scale(0.95); }
+    50% { transform: scale(0.92); }
     100% { transform: scale(1); }
   }
   
   /* Slide animations */
   .slide-up {
-    animation: slideUp 0.4s ease-out;
+    animation: slideUp 0.4s ease-out forwards;
   }
   
   @keyframes slideUp {
-    0% { transform: translateY(20px); opacity: 0; }
+    0% { transform: translateY(24px); opacity: 0; }
     100% { transform: translateY(0); opacity: 1; }
   }
   
   .slide-in-left {
-    animation: slideInLeft 0.4s ease-out;
+    animation: slideInLeft 0.4s ease-out forwards;
   }
   
   @keyframes slideInLeft {
-    0% { transform: translateX(-20px); opacity: 0; }
+    0% { transform: translateX(-24px); opacity: 0; }
     100% { transform: translateX(0); opacity: 1; }
+  }
+  
+  .slide-in-right {
+    animation: slideInRight 0.4s ease-out forwards;
+  }
+  
+  @keyframes slideInRight {
+    0% { transform: translateX(24px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  
+  /* Pulse glow */
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 5px hsl(var(--primary) / 0.5), var(--shadow-offset) var(--shadow-offset) 0 0 hsl(var(--foreground)); }
+    50% { box-shadow: 0 0 20px hsl(var(--primary) / 0.8), var(--shadow-offset) var(--shadow-offset) 0 0 hsl(var(--foreground)); }
   }
   
   /* Glow effect */
@@ -241,59 +346,100 @@
     box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
   }
   
+  .glow-secondary {
+    box-shadow: 0 0 20px hsl(var(--secondary) / 0.5);
+  }
+  
+  .glow-accent {
+    box-shadow: 0 0 20px hsl(var(--accent) / 0.5);
+  }
+  
   /* Rainbow border animation */
   .rainbow-border {
     position: relative;
-    background: hsl(var(--background));
+    background: hsl(var(--card));
   }
   
   .rainbow-border::before {
     content: '';
     position: absolute;
-    inset: -3px;
+    inset: -4px;
     background: linear-gradient(90deg, 
       hsl(var(--primary)), 
+      hsl(var(--hot-orange)),
       hsl(var(--accent)), 
       hsl(var(--lime)), 
       hsl(var(--secondary)), 
       hsl(var(--neon-purple)), 
       hsl(var(--primary))
     );
-    background-size: 300% 100%;
-    animation: rainbowMove 3s linear infinite;
+    background-size: 400% 100%;
+    animation: rainbowMove 4s linear infinite;
     border-radius: inherit;
     z-index: -1;
   }
   
   @keyframes rainbowMove {
     0% { background-position: 0% 50%; }
-    100% { background-position: 300% 50%; }
+    100% { background-position: 400% 50%; }
+  }
+  
+  /* Sparkle animation */
+  .sparkle {
+    animation: sparkle 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes sparkle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.05); }
+  }
+  
+  /* Float animation */
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
   
   /* Staggered fade in */
-  .stagger-1 { animation-delay: 0.1s; }
-  .stagger-2 { animation-delay: 0.2s; }
-  .stagger-3 { animation-delay: 0.3s; }
-  .stagger-4 { animation-delay: 0.4s; }
-  .stagger-5 { animation-delay: 0.5s; }
-  .stagger-6 { animation-delay: 0.6s; }
-  .stagger-7 { animation-delay: 0.7s; }
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+  .stagger-7 { animation-delay: 0.35s; }
+  .stagger-8 { animation-delay: 0.4s; }
+  
+  /* Retro scan lines */
+  .scan-lines {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(var(--foreground) / 0.03) 2px,
+      hsl(var(--foreground) / 0.03) 4px
+    );
+  }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - CHUNKIER */
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 ::-webkit-scrollbar-track {
   background: hsl(var(--muted));
-  border: 2px solid hsl(var(--border));
+  border: 3px solid hsl(var(--foreground));
 }
 
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--primary));
-  border: 2px solid hsl(var(--border));
+  border: 3px solid hsl(var(--foreground));
   border-radius: 0;
 }
 
@@ -301,8 +447,19 @@
   background: hsl(var(--secondary));
 }
 
+::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+  border: 3px solid hsl(var(--foreground));
+}
+
 /* Selection color */
 ::selection {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 4px solid hsl(var(--primary));
+  outline-offset: 2px;
 }
