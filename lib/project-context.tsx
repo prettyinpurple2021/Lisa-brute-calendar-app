@@ -23,32 +23,54 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
-    // Load selected project from localStorage
-    const saved = localStorage.getItem('vibeos-selected-project')
-    if (saved && saved !== 'null') {
-      setSelectedProjectIdState(saved)
-    }
-    fetchProjects()
+    // Load selected project from user preferences (real database)
+    fetchProjectsAndPreferences()
   }, [])
 
-  async function fetchProjects() {
+  async function fetchProjectsAndPreferences() {
     setLoading(true)
-    const { data } = await supabase
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    // Fetch all projects
+    const { data: projectsData } = await supabase
       .from('projects')
       .select('*')
       .eq('archived', false)
+      .eq('user_id', user.id)
       .order('name', { ascending: true })
     
-    setProjects(data || [])
+    setProjects(projectsData || [])
+
+    // Fetch user preferences to get selected project
+    const { data: prefsData } = await supabase
+      .from('user_preferences')
+      .select('selected_project_id')
+      .eq('user_id', user.id)
+      .single()
+    
+    if (prefsData?.selected_project_id) {
+      setSelectedProjectIdState(prefsData.selected_project_id)
+    }
+    
     setLoading(false)
   }
 
-  function setSelectedProjectId(id: string | null) {
+  async function setSelectedProjectId(id: string | null) {
     setSelectedProjectIdState(id)
-    if (id) {
-      localStorage.setItem('vibeos-selected-project', id)
-    } else {
-      localStorage.removeItem('vibeos-selected-project')
+    
+    // Persist to database
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase
+        .from('user_preferences')
+        .update({ selected_project_id: id })
+        .eq('user_id', user.id)
     }
   }
 
@@ -60,7 +82,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       selectedProjectId,
       selectedProject,
       setSelectedProjectId,
-      refreshProjects: fetchProjects,
+      refreshProjects: fetchProjectsAndPreferences,
       loading,
     }}>
       {children}
