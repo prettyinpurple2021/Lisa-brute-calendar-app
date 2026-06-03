@@ -11,7 +11,9 @@ import {
   X,
   Trash2,
   Edit3,
+  Sparkles,
 } from 'lucide-react'
+import { MeetingPrepModal } from '@/components/features/meeting-prep-modal'
 
 interface CalendarContentProps {
   initialEvents: CalendarEvent[]
@@ -42,6 +44,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
     allDay: false,
   })
   const [saving, setSaving] = useState(false)
+  const [meetingPrepEvent, setMeetingPrepEvent] = useState<CalendarEvent | null>(null)
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -358,13 +361,26 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
 
                 <div className="flex gap-2 pt-2">
                   {editingEvent && (
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      className="neo-btn bg-destructive text-destructive-foreground p-2"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        className="neo-btn bg-destructive text-destructive-foreground p-2"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMeetingPrepEvent(editingEvent)
+                          setShowEventModal(false)
+                        }}
+                        className="neo-btn bg-neon-purple text-white p-2 flex items-center gap-1"
+                        title="AI Meeting Prep"
+                      >
+                        <Sparkles className="w-5 h-5" />
+                      </button>
+                    </>
                   )}
                   <button
                     type="submit"
@@ -378,6 +394,14 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Meeting Prep Modal */}
+      {meetingPrepEvent && (
+        <MeetingPrepModal
+          event={meetingPrepEvent}
+          onClose={() => setMeetingPrepEvent(null)}
+        />
       )}
     </div>
   )
