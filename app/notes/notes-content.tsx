@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { QuickCapture } from '@/lib/types'
+import { useProject } from '@/lib/project-context'
 import {
   Inbox,
   CheckCircle,
@@ -40,15 +41,22 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
   const [newContent, setNewContent] = useState('')
   const [newType, setNewType] = useState<CaptureType>('thought')
   const [saving, setSaving] = useState(false)
+  
+  const { selectedProjectId, projects } = useProject()
+  
+  // Filter by project first
+  const projectFilteredCaptures = selectedProjectId
+    ? captures.filter(c => c.project_id === selectedProjectId)
+    : captures
 
-  const filteredCaptures = captures.filter(c => {
+  const filteredCaptures = projectFilteredCaptures.filter(c => {
     if (filter === 'unprocessed' && c.processed) return false
     if (filter === 'processed' && !c.processed) return false
     if (typeFilter && c.capture_type !== typeFilter) return false
     return true
   })
 
-  const unprocessedCount = captures.filter(c => !c.processed).length
+  const unprocessedCount = projectFilteredCaptures.filter(c => !c.processed).length
 
   async function createCapture(e: React.FormEvent) {
     e.preventDefault()
@@ -65,6 +73,7 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
         user_id: user.id,
         content: newContent.trim(),
         capture_type: newType,
+        project_id: selectedProjectId,
       })
       .select()
       .single()
@@ -113,6 +122,7 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
       description: capture.content.length > 100 ? capture.content : null,
       status: 'todo',
       priority: 'medium',
+      project_id: capture.project_id,
     })
 
     // Mark as processed

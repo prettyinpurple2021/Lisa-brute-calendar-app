@@ -19,8 +19,13 @@ import {
   Menu,
   X,
   Zap,
+  FolderKanban,
+  ChevronDown,
+  Plus,
 } from 'lucide-react'
 import { QuickCaptureModal } from './quick-capture-modal'
+import { useProject, ProjectProvider } from '@/lib/project-context'
+import { ProjectColor } from '@/lib/types'
 
 const APPS = [
   { id: 'dashboard', name: 'Dashboard', icon: Home, color: 'bg-primary', href: '/dashboard', shortcut: '1' },
@@ -30,19 +35,45 @@ const APPS = [
   { id: 'analytics', name: 'Analytics', icon: BarChart2, color: 'bg-neon-purple', href: '/analytics', shortcut: '5' },
   { id: 'ai-chat', name: 'AI Chat', icon: MessageCircle, color: 'bg-hot-orange', href: '/ai-chat', shortcut: '6' },
   { id: 'files', name: 'Files', icon: Folder, color: 'bg-electric-blue', href: '/files', shortcut: '7' },
+  { id: 'projects', name: 'Projects', icon: FolderKanban, color: 'bg-neon-green', href: '/projects', shortcut: '9' },
   { id: 'settings', name: 'Settings', icon: Settings, color: 'bg-muted', href: '/settings', shortcut: '8' },
 ]
 
-interface AppShellProps {
-  children: React.ReactNode
+const getProjectColorClass = (color: ProjectColor) => {
+  const colorMap: Record<ProjectColor, string> = {
+    pink: 'bg-hot-pink',
+    cyan: 'bg-electric-cyan',
+    yellow: 'bg-bright-yellow',
+    lime: 'bg-lime',
+    purple: 'bg-neon-purple',
+    orange: 'bg-hot-orange',
+    blue: 'bg-electric-blue',
+  }
+  return colorMap[color]
 }
 
-export function AppShell({ children }: AppShellProps) {
+interface AppShellProps {
+  children: React.ReactNode
+  currentPage?: string
+}
+
+export function AppShell({ children, currentPage }: AppShellProps) {
+  return (
+    <ProjectProvider>
+      <AppShellInner currentPage={currentPage}>{children}</AppShellInner>
+    </ProjectProvider>
+  )
+}
+
+function AppShellInner({ children, currentPage }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false)
   const [user, setUser] = useState<{ email?: string; display_name?: string } | null>(null)
+  
+  const { projects, selectedProjectId, selectedProject, setSelectedProjectId } = useProject()
 
   useEffect(() => {
     const supabase = createClient()
@@ -101,6 +132,76 @@ export function AppShell({ children }: AppShellProps) {
             </div>
             <span className="text-xl font-black">VibeOS</span>
           </Link>
+        </div>
+
+        {/* Project Switcher */}
+        <div className="p-3 border-b-4 border-foreground relative">
+          <button
+            onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+            className="w-full neo-btn bg-white flex items-center gap-2 text-left"
+          >
+            {selectedProject ? (
+              <>
+                <div className={`w-6 h-6 rounded-md border-2 border-black flex items-center justify-center text-sm ${getProjectColorClass(selectedProject.color)}`}>
+                  {selectedProject.icon}
+                </div>
+                <span className="flex-1 font-bold truncate">{selectedProject.name}</span>
+              </>
+            ) : (
+              <>
+                <FolderKanban className="w-5 h-5" />
+                <span className="flex-1 font-bold">All Projects</span>
+              </>
+            )}
+            <ChevronDown className={`w-4 h-4 transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {projectDropdownOpen && (
+            <div className="absolute left-3 right-3 top-full mt-1 bg-white border-4 border-black rounded-xl shadow-lg z-50 overflow-hidden">
+              <button
+                onClick={() => {
+                  setSelectedProjectId(null)
+                  setProjectDropdownOpen(false)
+                }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-100 transition-colors ${
+                  !selectedProjectId ? 'bg-primary/10' : ''
+                }`}
+              >
+                <FolderKanban className="w-5 h-5" />
+                <span className="font-semibold">All Projects</span>
+              </button>
+              
+              {projects.length > 0 && <div className="border-t-2 border-black" />}
+              
+              {projects.map((project) => (
+                <button
+                  key={project.id}
+                  onClick={() => {
+                    setSelectedProjectId(project.id)
+                    setProjectDropdownOpen(false)
+                  }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-100 transition-colors ${
+                    selectedProjectId === project.id ? 'bg-primary/10' : ''
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-md border-2 border-black flex items-center justify-center text-sm ${getProjectColorClass(project.color)}`}>
+                    {project.icon}
+                  </div>
+                  <span className="font-semibold truncate">{project.name}</span>
+                </button>
+              ))}
+              
+              <div className="border-t-2 border-black" />
+              <Link
+                href="/projects"
+                onClick={() => setProjectDropdownOpen(false)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-100 transition-colors text-sm text-muted-foreground"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Manage Projects</span>
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}

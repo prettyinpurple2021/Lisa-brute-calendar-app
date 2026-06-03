@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { CalendarEvent } from '@/lib/types'
+import { useProject } from '@/lib/project-context'
 import {
   ChevronLeft,
   ChevronRight,
@@ -42,9 +43,17 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
     endTime: '',
     color: 'pink',
     allDay: false,
+    projectId: null as string | null,
   })
   const [saving, setSaving] = useState(false)
   const [meetingPrepEvent, setMeetingPrepEvent] = useState<CalendarEvent | null>(null)
+  
+  const { selectedProjectId, projects } = useProject()
+  
+  // Filter events by selected project
+  const filteredEvents = selectedProjectId
+    ? events.filter(e => e.project_id === selectedProjectId)
+    : events
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -69,7 +78,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
   }
 
   function getEventsForDate(date: Date): CalendarEvent[] {
-    return events.filter((event) => {
+    return filteredEvents.filter((event) => {
       const eventStart = new Date(event.start_time)
       return (
         eventStart.getDate() === date.getDate() &&
@@ -90,6 +99,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       endTime: `${dateStr}T10:00`,
       color: 'pink',
       allDay: false,
+      projectId: selectedProjectId,
     })
     setShowEventModal(true)
   }
@@ -104,6 +114,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       endTime: event.end_time.slice(0, 16),
       color: event.color,
       allDay: event.all_day,
+      projectId: event.project_id,
     })
     setShowEventModal(true)
   }
@@ -125,6 +136,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       end_time: new Date(formData.endTime).toISOString(),
       color: formData.color,
       all_day: formData.allDay,
+      project_id: formData.projectId,
     }
 
     if (editingEvent) {
@@ -357,6 +369,21 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
                     className="w-5 h-5 neo-border"
                   />
                   <label htmlFor="allDay" className="text-sm font-bold">All day event</label>
+                </div>
+
+                {/* Project Selector */}
+                <div>
+                  <label className="block text-sm font-bold mb-1">Project</label>
+                  <select
+                    value={formData.projectId || ''}
+                    onChange={(e) => setFormData({ ...formData, projectId: e.target.value || null })}
+                    className="neo-input w-full"
+                  >
+                    <option value="">No Project</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex gap-2 pt-2">
