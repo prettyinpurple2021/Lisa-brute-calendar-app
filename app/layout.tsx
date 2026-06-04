@@ -19,15 +19,67 @@ const hennyPenny = Henny_Penny({
 })
 
 export const metadata: Metadata = {
-  title: "VibeOS | Solo Founder Command Center",
-  description: "Your AI-powered startup toolkit - Calendar, Tasks, Notes, Analytics, Chat, Files & Settings in one funky interface",
-  generator: "v0.app",
+  title: {
+    default: "VibeOS | Solo Founder Command Center",
+    template: "%s | VibeOS",
+  },
+  description: "Your AI-powered productivity toolkit for solo founders - Calendar, Tasks, Notes, Analytics, Chat, Files & more in one vibrant interface",
+  keywords: ["productivity", "solo founder", "startup", "task management", "calendar", "notes", "habit tracking", "ai assistant"],
+  authors: [{ name: "VibeOS" }],
+  creator: "VibeOS",
+  publisher: "VibeOS",
+  metadataBase: new URL("https://vibeos.app"),
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://vibeos.app",
+    siteName: "VibeOS",
+    title: "VibeOS | Solo Founder Command Center",
+    description: "Your AI-powered productivity toolkit for solo founders - Calendar, Tasks, Notes, Analytics, Chat, Files & more in one vibrant interface",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "VibeOS - Solo Founder Command Center",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VibeOS | Solo Founder Command Center",
+    description: "Your AI-powered productivity toolkit for solo founders",
+    images: ["/og-image.png"],
+    creator: "@vibeos",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon-16x16.png",
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/site.webmanifest",
 }
 
 export const viewport: Viewport = {
-  themeColor: "#ff00aa",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ff00aa" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a2e" },
+  ],
   width: "device-width",
   initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 }
 
 export default function RootLayout({
