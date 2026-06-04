@@ -3,6 +3,8 @@ export interface Profile {
   id: string
   display_name: string | null
   avatar_url: string | null
+  github_access_token: string | null
+  github_username: string | null
   created_at: string
   updated_at: string
 }
@@ -95,6 +97,9 @@ export interface Project {
   icon: string
   color: ProjectColor
   archived: boolean
+  github_repo_url: string | null
+  github_repo_name: string | null
+  github_repo_full_name: string | null
   created_at: string
   updated_at: string
 }
