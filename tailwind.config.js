@@ -150,9 +150,9 @@ module.exports = {
         sparkle: "sparkle 1.5s ease-in-out infinite",
       },
       fontFamily: {
-        sans: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
-        display: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
-        mono: ["var(--font-space-mono)", "monospace"],
+        sans: ["var(--font-henny-penny)", "cursive", "system-ui", "sans-serif"],
+        display: ["var(--font-emilys-candy)", "cursive", "system-ui", "sans-serif"],
+        mono: ["monospace"],
       },
     },
   },

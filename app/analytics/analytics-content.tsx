@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Habit, HabitCompletion, EnergyLog, Task } from '@/lib/types'
+import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   Flame,
   Plus,
@@ -50,8 +52,21 @@ export function AnalyticsContent({
     name: '',
     icon: '🎯',
     color: 'cyan',
+    projectId: null as string | null,
   })
   const [saving, setSaving] = useState(false)
+  
+  const { selectedProjectId, projects } = useProject()
+  
+  // Filter habits by project
+  const filteredHabits = selectedProjectId
+    ? habits.filter(h => h.project_id === selectedProjectId)
+    : habits
+  
+  // Filter tasks by project
+  const filteredTasks = selectedProjectId
+    ? tasks.filter(t => t.project_id === selectedProjectId)
+    : tasks
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -63,8 +78,8 @@ export function AnalyticsContent({
   })
 
   // Calculate stats
-  const completedTasksCount = tasks.filter(t => t.status === 'done').length
-  const totalTasksCount = tasks.length
+  const completedTasksCount = filteredTasks.filter(t => t.status === 'done').length
+  const totalTasksCount = filteredTasks.length
   const avgEnergy = initialEnergyLogs.length > 0
     ? (initialEnergyLogs.reduce((sum, log) => sum + log.level, 0) / initialEnergyLogs.length).toFixed(1)
     : '-'
@@ -131,7 +146,7 @@ export function AnalyticsContent({
 
   function openNewHabitModal() {
     setEditingHabit(null)
-    setFormData({ name: '', icon: '🎯', color: 'cyan' })
+    setFormData({ name: '', icon: '🎯', color: 'cyan', projectId: selectedProjectId })
     setShowHabitModal(true)
   }
 
@@ -141,6 +156,7 @@ export function AnalyticsContent({
       name: habit.name,
       icon: habit.icon,
       color: habit.color,
+      projectId: habit.project_id,
     })
     setShowHabitModal(true)
   }
@@ -159,6 +175,7 @@ export function AnalyticsContent({
       name: formData.name.trim(),
       icon: formData.icon,
       color: formData.color,
+      project_id: formData.projectId,
     }
 
     if (editingHabit) {
@@ -171,6 +188,9 @@ export function AnalyticsContent({
 
       if (!error && data) {
         setHabits(habits.map(h => h.id === editingHabit.id ? data : h))
+        toast.success('Habit updated!')
+      } else if (error) {
+        toast.error('Failed to update habit')
       }
     } else {
       const { data, error } = await supabase
@@ -181,6 +201,9 @@ export function AnalyticsContent({
 
       if (!error && data) {
         setHabits([...habits, data])
+        toast.success('Habit created!')
+      } else if (error) {
+        toast.error('Failed to create habit')
       }
     }
 
@@ -193,9 +216,15 @@ export function AnalyticsContent({
     if (!editingHabit) return
 
     const supabase = createClient()
-    await supabase.from('habits').delete().eq('id', editingHabit.id)
-    setHabits(habits.filter(h => h.id !== editingHabit.id))
-    setCompletions(completions.filter(c => c.habit_id !== editingHabit.id))
+    const { error } = await supabase.from('habits').delete().eq('id', editingHabit.id)
+    
+    if (error) {
+      toast.error('Failed to delete habit')
+    } else {
+      setHabits(habits.filter(h => h.id !== editingHabit.id))
+      setCompletions(completions.filter(c => c.habit_id !== editingHabit.id))
+      toast.success('Habit deleted!')
+    }
     setShowHabitModal(false)
     router.refresh()
   }
@@ -219,7 +248,7 @@ export function AnalyticsContent({
               <Target className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-black">{habits.length}</p>
+              <p className="text-2xl font-black">{filteredHabits.length}</p>
               <p className="text-xs font-semibold text-muted-foreground">Active Habits</p>
             </div>
           </div>
@@ -256,7 +285,7 @@ export function AnalyticsContent({
             </div>
             <div>
               <p className="text-2xl font-black">
-                {habits.length > 0 ? Math.max(...habits.map(h => getStreak(h.id))) : 0}
+                {filteredHabits.length > 0 ? Math.max(...filteredHabits.map(h => getStreak(h.id))) : 0}
               </p>
               <p className="text-xs font-semibold text-muted-foreground">Best Streak</p>
             </div>
@@ -280,7 +309,7 @@ export function AnalyticsContent({
           </button>
         </div>
 
-        {habits.length === 0 ? (
+        {filteredHabits.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Target className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="font-bold">No habits yet</p>
@@ -288,7 +317,7 @@ export function AnalyticsContent({
           </div>
         ) : (
           <div className="space-y-4">
-            {habits.map((habit) => {
+            {filteredHabits.map((habit) => {
               const colorClass = HABIT_COLORS.find(c => c.id === habit.color)?.class || 'bg-secondary'
               const streak = getStreak(habit.id)
               
@@ -458,6 +487,21 @@ export function AnalyticsContent({
                       />
                     ))}
                   </div>
+                </div>
+
+                {/* Project Selector */}
+                <div>
+                  <label className="block text-sm font-bold mb-2">Project</label>
+                  <select
+                    value={formData.projectId || ''}
+                    onChange={(e) => setFormData({ ...formData, projectId: e.target.value || null })}
+                    className="neo-input w-full"
+                  >
+                    <option value="">No Project</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex gap-2 pt-2">

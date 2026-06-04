@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { CalendarEvent } from '@/lib/types'
+import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   ChevronLeft,
   ChevronRight,
@@ -42,9 +44,17 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
     endTime: '',
     color: 'pink',
     allDay: false,
+    projectId: null as string | null,
   })
   const [saving, setSaving] = useState(false)
   const [meetingPrepEvent, setMeetingPrepEvent] = useState<CalendarEvent | null>(null)
+  
+  const { selectedProjectId, projects } = useProject()
+  
+  // Filter events by selected project
+  const filteredEvents = selectedProjectId
+    ? events.filter(e => e.project_id === selectedProjectId)
+    : events
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -69,7 +79,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
   }
 
   function getEventsForDate(date: Date): CalendarEvent[] {
-    return events.filter((event) => {
+    return filteredEvents.filter((event) => {
       const eventStart = new Date(event.start_time)
       return (
         eventStart.getDate() === date.getDate() &&
@@ -90,6 +100,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       endTime: `${dateStr}T10:00`,
       color: 'pink',
       allDay: false,
+      projectId: selectedProjectId,
     })
     setShowEventModal(true)
   }
@@ -104,6 +115,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       endTime: event.end_time.slice(0, 16),
       color: event.color,
       allDay: event.all_day,
+      projectId: event.project_id,
     })
     setShowEventModal(true)
   }
@@ -125,6 +137,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       end_time: new Date(formData.endTime).toISOString(),
       color: formData.color,
       all_day: formData.allDay,
+      project_id: formData.projectId,
     }
 
     if (editingEvent) {
@@ -135,8 +148,11 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to update event')
+      } else if (data) {
         setEvents(events.map(e => e.id === editingEvent.id ? data : e))
+        toast.success('Event updated!')
       }
     } else {
       const { data, error } = await supabase
@@ -145,8 +161,11 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to create event')
+      } else if (data) {
         setEvents([...events, data])
+        toast.success('Event created!')
       }
     }
 
@@ -159,8 +178,14 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
     if (!editingEvent) return
 
     const supabase = createClient()
-    await supabase.from('events').delete().eq('id', editingEvent.id)
-    setEvents(events.filter(e => e.id !== editingEvent.id))
+    const { error } = await supabase.from('events').delete().eq('id', editingEvent.id)
+    
+    if (error) {
+      toast.error('Failed to delete event')
+    } else {
+      setEvents(events.filter(e => e.id !== editingEvent.id))
+      toast.success('Event deleted!')
+    }
     setShowEventModal(false)
     router.refresh()
   }
@@ -357,6 +382,21 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
                     className="w-5 h-5 neo-border"
                   />
                   <label htmlFor="allDay" className="text-sm font-bold">All day event</label>
+                </div>
+
+                {/* Project Selector */}
+                <div>
+                  <label className="block text-sm font-bold mb-1">Project</label>
+                  <select
+                    value={formData.projectId || ''}
+                    onChange={(e) => setFormData({ ...formData, projectId: e.target.value || null })}
+                    className="neo-input w-full"
+                  >
+                    <option value="">No Project</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex gap-2 pt-2">

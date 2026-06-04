@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Task, AppContext } from '@/lib/types'
+import type { Task, AppContext, Project } from '@/lib/types'
+import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   Plus,
   X,
@@ -18,6 +20,7 @@ import {
   Filter,
   GripVertical,
   Check,
+  FolderKanban,
 } from 'lucide-react'
 
 interface TasksContentProps {
@@ -61,12 +64,20 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     status: 'todo' as Task['status'],
     appContext: null as AppContext | null,
     dueDate: '',
+    projectId: null as string | null,
   })
   const [saving, setSaving] = useState(false)
+  
+  const { selectedProjectId, projects } = useProject()
+
+  // Filter tasks by selected project
+  const projectFilteredTasks = selectedProjectId
+    ? tasks.filter(t => t.project_id === selectedProjectId)
+    : tasks
 
   const filteredTasks = appFilter
-    ? tasks.filter(t => t.app_context === appFilter)
-    : tasks
+    ? projectFilteredTasks.filter(t => t.app_context === appFilter)
+    : projectFilteredTasks
 
   const todoTasks = filteredTasks.filter(t => t.status === 'todo')
   const inProgressTasks = filteredTasks.filter(t => t.status === 'in_progress')
@@ -81,6 +92,7 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
       status: 'todo',
       appContext: appFilter,
       dueDate: '',
+      projectId: selectedProjectId,
     })
     setShowModal(true)
   }
@@ -94,6 +106,7 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
       status: task.status,
       appContext: task.app_context,
       dueDate: task.due_date || '',
+      projectId: task.project_id,
     })
     setShowModal(true)
   }
@@ -115,6 +128,7 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
       status: formData.status,
       app_context: formData.appContext,
       due_date: formData.dueDate || null,
+      project_id: formData.projectId,
     }
 
     if (editingTask) {
@@ -125,8 +139,11 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to update task')
+      } else if (data) {
         setTasks(tasks.map(t => t.id === editingTask.id ? data : t))
+        toast.success('Task updated!')
       }
     } else {
       const { data, error } = await supabase
@@ -135,8 +152,11 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to create task')
+      } else if (data) {
         setTasks([data, ...tasks])
+        toast.success('Task created!')
       }
     }
 
@@ -149,8 +169,14 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     if (!editingTask) return
 
     const supabase = createClient()
-    await supabase.from('tasks').delete().eq('id', editingTask.id)
-    setTasks(tasks.filter(t => t.id !== editingTask.id))
+    const { error } = await supabase.from('tasks').delete().eq('id', editingTask.id)
+    
+    if (error) {
+      toast.error('Failed to delete task')
+    } else {
+      setTasks(tasks.filter(t => t.id !== editingTask.id))
+      toast.success('Task deleted!')
+    }
     setShowModal(false)
     router.refresh()
   }
@@ -360,6 +386,21 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
                       className="neo-input w-full"
                     />
                   </div>
+                </div>
+
+                {/* Project Selector */}
+                <div>
+                  <label className="block text-sm font-bold mb-1">Project</label>
+                  <select
+                    value={formData.projectId || ''}
+                    onChange={(e) => setFormData({ ...formData, projectId: e.target.value || null })}
+                    className="neo-input w-full"
+                  >
+                    <option value="">No Project</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex gap-2 pt-2">

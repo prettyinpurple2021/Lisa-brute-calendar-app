@@ -26,6 +26,7 @@ export default async function DashboardPage() {
     { data: habitCompletions },
     { data: todayEnergy },
     { data: unprocessedCaptures },
+    { data: dailyGoals },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('events').select('*').eq('user_id', user.id)
@@ -47,6 +48,9 @@ export default async function DashboardPage() {
       .eq('processed', false)
       .order('created_at', { ascending: false })
       .limit(5),
+    supabase.from('daily_goals').select('*').eq('user_id', user.id)
+      .eq('goal_date', today.toISOString().split('T')[0])
+      .order('created_at', { ascending: true }),
   ])
 
   return (
@@ -59,6 +63,7 @@ export default async function DashboardPage() {
         habitCompletions={habitCompletions || []}
         currentEnergy={todayEnergy?.[0]?.level || null}
         unprocessedCaptures={unprocessedCaptures || []}
+        dailyGoals={dailyGoals || []}
       />
     </AppShell>
   )

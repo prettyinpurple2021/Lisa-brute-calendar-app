@@ -1,18 +1,20 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Space_Grotesk, Space_Mono } from "next/font/google"
+import { Emilys_Candy, Henny_Penny } from "next/font/google"
+import { Toaster } from "react-hot-toast"
 import "./globals.css"
 
-const spaceGrotesk = Space_Grotesk({ 
+const emilysCandy = Emilys_Candy({ 
   subsets: ["latin"],
-  variable: "--font-space-grotesk",
+  weight: "400",
+  variable: "--font-emilys-candy",
   display: "swap",
 })
 
-const spaceMono = Space_Mono({ 
+const hennyPenny = Henny_Penny({ 
   subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-space-mono",
+  weight: "400",
+  variable: "--font-henny-penny",
   display: "swap",
 })
 
@@ -35,8 +37,34 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="bg-background">
-      <body className={`${spaceGrotesk.variable} ${spaceMono.variable} font-sans antialiased`}>
+      <body className={`${emilysCandy.variable} ${hennyPenny.variable} font-sans antialiased`}>
         {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#fff',
+              color: '#1a1a2e',
+              border: '4px solid #1a1a2e',
+              borderRadius: '12px',
+              fontWeight: 'bold',
+              boxShadow: '4px 4px 0 #1a1a2e',
+            },
+            success: {
+              iconTheme: {
+                primary: '#00ff88',
+                secondary: '#1a1a2e',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ff4466',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </body>
     </html>
   )

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { QuickCapture } from '@/lib/types'
+import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   Inbox,
   CheckCircle,
@@ -40,15 +42,22 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
   const [newContent, setNewContent] = useState('')
   const [newType, setNewType] = useState<CaptureType>('thought')
   const [saving, setSaving] = useState(false)
+  
+  const { selectedProjectId, projects } = useProject()
+  
+  // Filter by project first
+  const projectFilteredCaptures = selectedProjectId
+    ? captures.filter(c => c.project_id === selectedProjectId)
+    : captures
 
-  const filteredCaptures = captures.filter(c => {
+  const filteredCaptures = projectFilteredCaptures.filter(c => {
     if (filter === 'unprocessed' && c.processed) return false
     if (filter === 'processed' && !c.processed) return false
     if (typeFilter && c.capture_type !== typeFilter) return false
     return true
   })
 
-  const unprocessedCount = captures.filter(c => !c.processed).length
+  const unprocessedCount = projectFilteredCaptures.filter(c => !c.processed).length
 
   async function createCapture(e: React.FormEvent) {
     e.preventDefault()
@@ -65,12 +74,16 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
         user_id: user.id,
         content: newContent.trim(),
         capture_type: newType,
+        project_id: selectedProjectId,
       })
       .select()
       .single()
 
     if (!error && data) {
       setCaptures([data, ...captures])
+      toast.success('Capture saved!')
+    } else if (error) {
+      toast.error('Failed to save capture')
     }
 
     setSaving(false)
@@ -96,8 +109,14 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
 
   async function deleteCapture(id: string) {
     const supabase = createClient()
-    await supabase.from('quick_captures').delete().eq('id', id)
-    setCaptures(captures.filter(c => c.id !== id))
+    const { error } = await supabase.from('quick_captures').delete().eq('id', id)
+    
+    if (error) {
+      toast.error('Failed to delete capture')
+    } else {
+      setCaptures(captures.filter(c => c.id !== id))
+      toast.success('Capture deleted!')
+    }
     router.refresh()
   }
 
@@ -107,13 +126,19 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
     if (!user) return
 
     // Create task from capture
-    await supabase.from('tasks').insert({
+    const { error } = await supabase.from('tasks').insert({
       user_id: user.id,
       title: capture.content.slice(0, 100),
       description: capture.content.length > 100 ? capture.content : null,
       status: 'todo',
       priority: 'medium',
+      project_id: capture.project_id,
     })
+
+    if (error) {
+      toast.error('Failed to convert to task')
+      return
+    }
 
     // Mark as processed
     await supabase
@@ -122,6 +147,7 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
       .eq('id', capture.id)
 
     setCaptures(captures.map(c => c.id === capture.id ? { ...c, processed: true } : c))
+    toast.success('Converted to task!')
     router.refresh()
   }
 

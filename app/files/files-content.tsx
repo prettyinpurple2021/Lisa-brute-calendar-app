@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Upload, File, Trash2, Download, FolderOpen, Image, FileText, FileArchive, Music, Video, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import toast from 'react-hot-toast'
 
 interface FileItem {
   pathname: string
@@ -65,7 +66,7 @@ export function FilesContent() {
       const data = await response.json()
       setFiles(data.files || [])
     } catch (err) {
-      setError('Failed to load files')
+      toast.error('Failed to load files')
       console.error(err)
     } finally {
       setIsLoading(false)
@@ -96,8 +97,9 @@ export function FilesContent() {
       }
       
       await fetchFiles()
+      toast.success(`${fileList.length} file${fileList.length > 1 ? 's' : ''} uploaded!`)
     } catch (err) {
-      setError('Failed to upload file(s)')
+      toast.error('Failed to upload file(s)')
       console.error(err)
     } finally {
       setIsUploading(false)
@@ -117,8 +119,9 @@ export function FilesContent() {
       if (!response.ok) throw new Error('Delete failed')
       
       setFiles(files.filter(f => f.pathname !== pathname))
+      toast.success('File deleted!')
     } catch (err) {
-      setError('Failed to delete file')
+      toast.error('Failed to delete file')
       console.error(err)
     }
   }

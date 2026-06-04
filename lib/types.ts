@@ -16,6 +16,7 @@ export interface CalendarEvent {
   end_time: string
   color: string
   all_day: boolean
+  project_id: string | null
   created_at: string
   updated_at: string
 }
@@ -29,6 +30,7 @@ export interface Task {
   priority: 'low' | 'medium' | 'high' | 'urgent'
   due_date: string | null
   app_context: AppContext | null
+  project_id: string | null
   created_at: string
   updated_at: string
 }
@@ -41,6 +43,7 @@ export interface Habit {
   color: string
   frequency: 'daily' | 'weekly'
   target_count: number
+  project_id: string | null
   created_at: string
   updated_at: string
 }
@@ -69,8 +72,44 @@ export interface QuickCapture {
   content: string
   capture_type: 'thought' | 'task' | 'idea' | 'link'
   processed: boolean
+  project_id: string | null
   created_at: string
 }
+
+export interface DailyGoal {
+  id: string
+  user_id: string
+  title: string
+  completed: boolean
+  goal_date: string
+  project_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Project {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  icon: string
+  color: ProjectColor
+  archived: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ProjectColor = 'pink' | 'cyan' | 'yellow' | 'lime' | 'purple' | 'orange' | 'blue'
+
+export const PROJECT_COLORS: { value: ProjectColor; label: string; class: string }[] = [
+  { value: 'pink', label: 'Pink', class: 'bg-hot-pink' },
+  { value: 'cyan', label: 'Cyan', class: 'bg-electric-cyan' },
+  { value: 'yellow', label: 'Yellow', class: 'bg-bright-yellow' },
+  { value: 'lime', label: 'Lime', class: 'bg-lime' },
+  { value: 'purple', label: 'Purple', class: 'bg-neon-purple' },
+  { value: 'orange', label: 'Orange', class: 'bg-hot-orange' },
+  { value: 'blue', label: 'Blue', class: 'bg-electric-blue' },
+]
 
 // App context for tasks related to building the 7 apps
 export type AppContext = 'calendar' | 'tasks' | 'notes' | 'analytics' | 'ai-chat' | 'files' | 'settings'
