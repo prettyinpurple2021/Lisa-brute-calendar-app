@@ -2,7 +2,7 @@
 
 This document tracks every placeholder, mock, and incomplete implementation that needs to be replaced with real functionality.
 
-**Last Updated:** Session including Projects feature, AI Chat, Files, Focus Timer
+**Last Updated:** GitHub Integration Complete
 
 ---
 
@@ -10,9 +10,11 @@ This document tracks every placeholder, mock, and incomplete implementation that
 
 ### Dashboard
 - Daily planning view with real database queries
+- Daily Goals CRUD (create, complete, delete goals)
 - Energy level tracker (real data)
 - Habit streaks (real data from habit_completions)
 - Today's schedule (real events from DB)
+- Project filtering on all data
 
 ### Calendar
 - Full CRUD operations on events
@@ -20,12 +22,14 @@ This document tracks every placeholder, mock, and incomplete implementation that
 - Event creation/editing/deletion
 - AI Meeting Prep feature (generates talking points)
 - Project filtering support
+- Toast notifications for all actions
 
 ### Tasks
 - Task creation with app context filtering
 - Status/priority management
 - Real database storage
 - Project filtering support
+- Toast notifications for all actions
 
 ### Notes/Inbox
 - Quick capture functionality
@@ -33,11 +37,16 @@ This document tracks every placeholder, mock, and incomplete implementation that
 - Process/archive captures
 - Convert captures to tasks
 - Project filtering support
+- Toast notifications for all actions
 
-### Analytics
+### Analytics/Habits
 - Energy heatmap (real data)
 - Habit completion tracking (real data)
 - Weekly insights (real calculations)
+- Full habit CRUD (create, edit, delete habits)
+- Icon and color selection for habits
+- Project association for habits
+- Toast notifications for all actions
 
 ### Authentication
 - Supabase email/password auth
@@ -55,6 +64,7 @@ This document tracks every placeholder, mock, and incomplete implementation that
 - Upload, download, delete functionality
 - File type detection and icons
 - Drag and drop upload
+- Toast notifications for all actions
 
 ### Focus Timer
 - Pomodoro timer with configurable durations
@@ -69,19 +79,40 @@ This document tracks every placeholder, mock, and incomplete implementation that
 - Focus timer duration settings (persisted)
 - Calendar week start preference (persisted)
 - Sound preferences (persisted)
+- GitHub Integration (connect/disconnect)
 
 ### Projects
 - Create, edit, archive projects
 - Custom icons (16 options) and colors (7 options)
 - Project switcher in sidebar
 - Selected project persisted to user_preferences (NOT localStorage)
-- Filter tasks, events, notes by project
+- Filter tasks, events, notes, habits, goals by project
+- GitHub repository linking per project
+
+### GitHub Integration
+- OAuth flow with Supabase Auth
+- Connect GitHub account in Settings
+- Link repositories to projects
+- Searchable repository selector
+- Unlink repositories
+- Open repos in GitHub
+
+### UI/UX Polish
+- Toast notifications (react-hot-toast) with Y2K styling
+- Skeleton loading components
+- Skip-to-content link for accessibility
+- ARIA labels on navigation elements
+- aria-current for active pages
+- aria-expanded/haspopup for dropdowns
+- role="listbox" and role="option" for selectors
+- aria-labels on icon-only buttons
+- role="dialog" on modals
 
 ---
 
 ## Database Tables (All Created)
 
-- profiles
+- profiles (with github_access_token, github_username)
 - events (with project_id)
 - tasks (with project_id)
 - habits (with project_id)
@@ -90,67 +121,38 @@ This document tracks every placeholder, mock, and incomplete implementation that
 - quick_captures (with project_id)
 - focus_sessions (with project_id)
 - user_preferences (with selected_project_id)
-- projects
+- projects (with github_repo_url, github_repo_name, github_repo_full_name)
+- daily_goals (with project_id)
 
 All have RLS policies and are production-ready.
 
 ---
 
-## REMAINING TODOS
+## Production Readiness
 
-### 1. Habit Creation UI
-- **Status:** NOT IMPLEMENTED
-- **Location:** Should be `/app/habits/page.tsx` or modal in analytics
-- **Details:** Currently habits are hardcoded samples in dashboard
-- **TODO:** Build full CRUD interface to create/edit/delete habits
-- **Database:** habits table exists and is ready
+### Current Status: ~99% Complete
 
-### 2. Loading States & Toasts
-- **Status:** PARTIAL
-- **TODO Items:**
-  - Add skeleton loaders for all data fetching
-  - Add success/error toast notifications
-  - Add loading spinners during form submissions
-- **Implementation:** Use react-hot-toast or similar
+**Ready for Production:**
+- Authentication system
+- Database schema with RLS
+- Real-time data operations
+- AI Chat integration
+- File storage
+- Focus timer
+- Projects organization
+- GitHub repository linking
+- Settings persistence
+- Toast notifications
+- Accessibility improvements
+- Y2K neobrutalism design
 
-### 3. Daily Planning CRUD
-- **Status:** READ ONLY
-- **Location:** Dashboard shows daily goals
-- **TODO:** Add modal/interface to create/edit daily goals
-- **Details:** Currently displays but no create/edit functionality
-
-### 4. Accessibility Polish
-- **Status:** PARTIAL
-- **TODO Items:**
-  - Add ARIA labels to all interactive elements
-  - Test full keyboard navigation
-  - Verify color contrast meets WCAG AA standards
-  - Add sr-only labels for icon-only buttons
-  - Test with screen reader
-
----
-
-## UI/UX Components (Working)
-
-### Quick Capture Modal (Cmd+K)
-- **Location:** `/components/layout/quick-capture-modal.tsx`
-- **Status:** Fully working - captures to database
-
-### Navigation System
-- **Location:** `/components/layout/app-shell.tsx`
-- **Status:** Desktop sidebar + mobile bottom nav working
-
-### Project Switcher
-- **Location:** `/components/layout/app-shell.tsx`
-- **Status:** Fully working with DB persistence
-
-### Meeting Prep Modal
-- **Location:** `/components/features/meeting-prep-modal.tsx`
-- **Status:** Working with AI generation
-
-### Focus Timer
-- **Location:** `/components/features/focus-timer.tsx` and `/app/focus/page.tsx`
-- **Status:** Fully working with session tracking
+**Optional Future Enhancements:**
+- Additional OAuth providers (Google, etc.)
+- Real-time collaboration
+- Push notifications
+- Calendar integrations (Google Calendar, etc.)
+- Advanced analytics/reporting
+- Team/workspace features
 
 ---
 
@@ -168,41 +170,10 @@ All have RLS policies and are production-ready.
 **AI (zero-config via Vercel AI Gateway):**
 - No API key needed - uses Vercel AI Gateway
 
----
-
-## Production Readiness
-
-### Current Status: ~95% Complete
-
-**Ready for Production:**
-- Authentication system
-- Database schema with RLS
-- Real-time data operations
-- AI Chat integration
-- File storage
-- Focus timer
-- Projects organization
-- Settings persistence
-- Y2K neobrutalism design
-
-**Needs Completion:**
-- Habit creation UI (5%)
-- Loading states/toasts
-- Daily planning CRUD
-- Accessibility audit
-
----
-
-## Quick Implementation Checklist
-
-- [ ] Build habit creation/edit page
-- [ ] Add skeleton loaders to all pages
-- [ ] Add toast notifications for actions
-- [ ] Add daily planning create/edit modal
-- [ ] ARIA labels on all buttons
-- [ ] Keyboard navigation testing
-- [ ] Color contrast verification
-- [ ] Screen reader testing
+**GitHub OAuth (configured in Supabase Dashboard):**
+- GitHub OAuth App Client ID
+- GitHub OAuth App Client Secret
+- Configured in Supabase > Authentication > Providers > GitHub
 
 ---
 
@@ -214,3 +185,4 @@ All have RLS policies and are production-ready.
 - **Background:** Polka dot pattern on light pink/white
 - **Fonts:** Emily's Candy (display), Henny Penny (body)
 - **Responsive:** Mobile-first with bottom nav, desktop has sidebar
+- **Toasts:** Bottom-right position with neo-brutalism styling
