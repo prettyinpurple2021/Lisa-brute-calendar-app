@@ -3,15 +3,33 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Project, PROJECT_COLORS, ProjectColor } from '@/lib/types'
-import { Plus, Archive, ArchiveRestore, Edit3, Trash2, X, FolderOpen } from 'lucide-react'
+import { Plus, Archive, ArchiveRestore, Edit3, Trash2, X, FolderOpen, Github, Link, Unlink, Loader2, ExternalLink } from 'lucide-react'
+import toast from 'react-hot-toast'
 
-export function ProjectsContent() {
+interface GithubRepo {
+  id: number
+  name: string
+  full_name: string
+  html_url: string
+  description: string | null
+  private: boolean
+  updated_at: string
+}
+
+export function ProjectsContent({ githubConnected }: { githubConnected: boolean }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [saving, setSaving] = useState(false)
+  
+  // GitHub repo linking
+  const [showRepoModal, setShowRepoModal] = useState(false)
+  const [repoLinkingProject, setRepoLinkingProject] = useState<Project | null>(null)
+  const [repos, setRepos] = useState<GithubRepo[]>([])
+  const [loadingRepos, setLoadingRepos] = useState(false)
+  const [repoSearch, setRepoSearch] = useState('')
   
   // Form state
   const [name, setName] = useState('')
@@ -95,7 +113,72 @@ export function ProjectsContent() {
       .delete()
       .eq('id', project.id)
     fetchProjects()
+    toast.success('Project deleted')
   }
+
+  async function openRepoLinkModal(project: Project) {
+    setRepoLinkingProject(project)
+    setShowRepoModal(true)
+    setRepoSearch('')
+    
+    if (repos.length === 0) {
+      setLoadingRepos(true)
+      const response = await fetch('/api/github/repos')
+      if (response.ok) {
+        const data = await response.json()
+        setRepos(data.repos || [])
+      } else {
+        toast.error('Failed to load repositories')
+      }
+      setLoadingRepos(false)
+    }
+  }
+
+  async function linkRepo(repo: GithubRepo) {
+    if (!repoLinkingProject) return
+    
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        github_repo_url: repo.html_url,
+        github_repo_name: repo.name,
+        github_repo_full_name: repo.full_name,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', repoLinkingProject.id)
+
+    if (error) {
+      toast.error('Failed to link repository')
+    } else {
+      toast.success(`Linked ${repo.name} to ${repoLinkingProject.name}`)
+      fetchProjects()
+    }
+    setShowRepoModal(false)
+  }
+
+  async function unlinkRepo(project: Project) {
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        github_repo_url: null,
+        github_repo_name: null,
+        github_repo_full_name: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', project.id)
+
+    if (error) {
+      toast.error('Failed to unlink repository')
+    } else {
+      toast.success('Repository unlinked')
+      fetchProjects()
+    }
+  }
+
+  const filteredRepos = repos.filter(repo => 
+    repo.name.toLowerCase().includes(repoSearch.toLowerCase()) ||
+    repo.full_name.toLowerCase().includes(repoSearch.toLowerCase())
+  )
 
   const getColorClass = (c: ProjectColor) => {
     const colorMap: Record<ProjectColor, string> = {
@@ -187,6 +270,45 @@ export function ProjectsContent() {
                   </div>
                 </div>
               </div>
+
+              {/* GitHub Repo Link */}
+              {project.github_repo_full_name ? (
+                <div className="flex items-center gap-2 mb-4 p-2 bg-gray-100 rounded-lg border-2 border-black">
+                  <Github className="w-4 h-4" />
+                  <a 
+                    href={project.github_repo_url || '#'} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium hover:underline flex-1 truncate"
+                  >
+                    {project.github_repo_full_name}
+                  </a>
+                  <button
+                    onClick={() => unlinkRepo(project)}
+                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    title="Unlink repository"
+                  >
+                    <Unlink className="w-3 h-3" />
+                  </button>
+                  <a
+                    href={project.github_repo_url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    title="Open in GitHub"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              ) : githubConnected && !project.archived ? (
+                <button
+                  onClick={() => openRepoLinkModal(project)}
+                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4 p-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors w-full"
+                >
+                  <Github className="w-4 h-4" />
+                  <span>Link GitHub repository</span>
+                </button>
+              ) : null}
               
               <div className="flex gap-2 mt-4">
                 <button
@@ -332,6 +454,74 @@ export function ProjectsContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Repository Selection Modal */}
+      {showRepoModal && repoLinkingProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-4 border-black rounded-3xl p-6 w-full max-w-lg neo-shadow animate-bounce-in max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-black">Link Repository</h2>
+                <p className="text-sm text-gray-600">to {repoLinkingProject.name}</p>
+              </div>
+              <button
+                onClick={() => setShowRepoModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search repositories..."
+              value={repoSearch}
+              onChange={(e) => setRepoSearch(e.target.value)}
+              className="neo-input w-full mb-4"
+            />
+
+            {/* Repo List */}
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {loadingRepos ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                </div>
+              ) : filteredRepos.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Github className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">No repositories found</p>
+                  {repoSearch && <p className="text-sm">Try a different search term</p>}
+                </div>
+              ) : (
+                filteredRepos.map((repo) => (
+                  <button
+                    key={repo.id}
+                    onClick={() => linkRepo(repo)}
+                    className="w-full text-left p-3 border-3 border-black rounded-xl hover:bg-gray-50 transition-colors flex items-start gap-3"
+                  >
+                    <Github className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold truncate">{repo.full_name}</p>
+                      {repo.description && (
+                        <p className="text-sm text-gray-600 truncate">{repo.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        {repo.private && (
+                          <span className="text-xs px-2 py-0.5 bg-gray-200 rounded-full">Private</span>
+                        )}
+                        <span className="text-xs text-gray-400">
+                          Updated {new Date(repo.updated_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

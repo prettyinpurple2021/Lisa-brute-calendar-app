@@ -14,6 +14,7 @@ import {
   Trash2,
   Edit3,
   Sparkles,
+  Repeat,
 } from 'lucide-react'
 import { MeetingPrepModal } from '@/components/features/meeting-prep-modal'
 
@@ -45,6 +46,9 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
     color: 'pink',
     allDay: false,
     projectId: null as string | null,
+    isRecurring: false,
+    recurrencePattern: 'weekly' as 'daily' | 'weekly' | 'monthly',
+    recurrenceInterval: 1,
   })
   const [saving, setSaving] = useState(false)
   const [meetingPrepEvent, setMeetingPrepEvent] = useState<CalendarEvent | null>(null)
@@ -101,6 +105,9 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       color: 'pink',
       allDay: false,
       projectId: selectedProjectId,
+      isRecurring: false,
+      recurrencePattern: 'weekly',
+      recurrenceInterval: 1,
     })
     setShowEventModal(true)
   }
@@ -116,6 +123,9 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       color: event.color,
       allDay: event.all_day,
       projectId: event.project_id,
+      isRecurring: event.is_recurring || false,
+      recurrencePattern: event.recurrence_pattern || 'weekly',
+      recurrenceInterval: event.recurrence_interval || 1,
     })
     setShowEventModal(true)
   }
@@ -138,6 +148,9 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
       color: formData.color,
       all_day: formData.allDay,
       project_id: formData.projectId,
+      is_recurring: formData.isRecurring,
+      recurrence_pattern: formData.isRecurring ? formData.recurrencePattern : null,
+      recurrence_interval: formData.isRecurring ? formData.recurrenceInterval : 1,
     }
 
     if (editingEvent) {
@@ -397,6 +410,43 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
                       <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Recurring */}
+                <div className="p-3 border-2 border-dashed border-foreground/30 rounded-xl">
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.isRecurring}
+                      onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+                      className="w-5 h-5 rounded border-2 border-black"
+                    />
+                    <Repeat className="w-4 h-4" />
+                    <span className="font-bold">Recurring Event</span>
+                  </label>
+                  
+                  {formData.isRecurring && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-sm">Repeat every</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={formData.recurrenceInterval}
+                        onChange={(e) => setFormData({ ...formData, recurrenceInterval: parseInt(e.target.value) || 1 })}
+                        className="neo-input w-16 text-center"
+                      />
+                      <select
+                        value={formData.recurrencePattern}
+                        onChange={(e) => setFormData({ ...formData, recurrencePattern: e.target.value as 'daily' | 'weekly' | 'monthly' })}
+                        className="neo-input"
+                      >
+                        <option value="daily">day(s)</option>
+                        <option value="weekly">week(s)</option>
+                        <option value="monthly">month(s)</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 pt-2">
