@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { QuickCapture } from '@/lib/types'
 import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   Inbox,
   CheckCircle,
@@ -80,6 +81,9 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
 
     if (!error && data) {
       setCaptures([data, ...captures])
+      toast.success('Capture saved!')
+    } else if (error) {
+      toast.error('Failed to save capture')
     }
 
     setSaving(false)
@@ -105,8 +109,14 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
 
   async function deleteCapture(id: string) {
     const supabase = createClient()
-    await supabase.from('quick_captures').delete().eq('id', id)
-    setCaptures(captures.filter(c => c.id !== id))
+    const { error } = await supabase.from('quick_captures').delete().eq('id', id)
+    
+    if (error) {
+      toast.error('Failed to delete capture')
+    } else {
+      setCaptures(captures.filter(c => c.id !== id))
+      toast.success('Capture deleted!')
+    }
     router.refresh()
   }
 
@@ -116,7 +126,7 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
     if (!user) return
 
     // Create task from capture
-    await supabase.from('tasks').insert({
+    const { error } = await supabase.from('tasks').insert({
       user_id: user.id,
       title: capture.content.slice(0, 100),
       description: capture.content.length > 100 ? capture.content : null,
@@ -125,6 +135,11 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
       project_id: capture.project_id,
     })
 
+    if (error) {
+      toast.error('Failed to convert to task')
+      return
+    }
+
     // Mark as processed
     await supabase
       .from('quick_captures')
@@ -132,6 +147,7 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
       .eq('id', capture.id)
 
     setCaptures(captures.map(c => c.id === capture.id ? { ...c, processed: true } : c))
+    toast.success('Converted to task!')
     router.refresh()
   }
 

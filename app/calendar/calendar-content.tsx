@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { CalendarEvent } from '@/lib/types'
 import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   ChevronLeft,
   ChevronRight,
@@ -147,8 +148,11 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to update event')
+      } else if (data) {
         setEvents(events.map(e => e.id === editingEvent.id ? data : e))
+        toast.success('Event updated!')
       }
     } else {
       const { data, error } = await supabase
@@ -157,8 +161,11 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to create event')
+      } else if (data) {
         setEvents([...events, data])
+        toast.success('Event created!')
       }
     }
 
@@ -171,8 +178,14 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
     if (!editingEvent) return
 
     const supabase = createClient()
-    await supabase.from('events').delete().eq('id', editingEvent.id)
-    setEvents(events.filter(e => e.id !== editingEvent.id))
+    const { error } = await supabase.from('events').delete().eq('id', editingEvent.id)
+    
+    if (error) {
+      toast.error('Failed to delete event')
+    } else {
+      setEvents(events.filter(e => e.id !== editingEvent.id))
+      toast.success('Event deleted!')
+    }
     setShowEventModal(false)
     router.refresh()
   }

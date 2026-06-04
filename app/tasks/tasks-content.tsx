@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Task, AppContext, Project } from '@/lib/types'
 import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   Plus,
   X,
@@ -138,8 +139,11 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to update task')
+      } else if (data) {
         setTasks(tasks.map(t => t.id === editingTask.id ? data : t))
+        toast.success('Task updated!')
       }
     } else {
       const { data, error } = await supabase
@@ -148,8 +152,11 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
         .select()
         .single()
 
-      if (!error && data) {
+      if (error) {
+        toast.error('Failed to create task')
+      } else if (data) {
         setTasks([data, ...tasks])
+        toast.success('Task created!')
       }
     }
 
@@ -162,8 +169,14 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     if (!editingTask) return
 
     const supabase = createClient()
-    await supabase.from('tasks').delete().eq('id', editingTask.id)
-    setTasks(tasks.filter(t => t.id !== editingTask.id))
+    const { error } = await supabase.from('tasks').delete().eq('id', editingTask.id)
+    
+    if (error) {
+      toast.error('Failed to delete task')
+    } else {
+      setTasks(tasks.filter(t => t.id !== editingTask.id))
+      toast.success('Task deleted!')
+    }
     setShowModal(false)
     router.refresh()
   }
