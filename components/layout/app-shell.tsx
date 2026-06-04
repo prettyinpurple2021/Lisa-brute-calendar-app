@@ -65,7 +65,7 @@ export function AppShell({ children, currentPage }: AppShellProps) {
   )
 }
 
-function AppShellInner({ children, currentPage }: AppShellProps) {
+function AppShellInner({ children }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -103,10 +103,10 @@ function AppShellInner({ children, currentPage }: AppShellProps) {
       return
     }
 
-    // App navigation: Cmd/Ctrl + 1-8
-    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '8') {
+    // App navigation: Cmd/Ctrl + 1-9
+    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
       e.preventDefault()
-      const app = APPS[parseInt(e.key) - 1]
+      const app = APPS.find((item) => item.shortcut === e.key)
       if (app) {
         router.push(app.href)
       }

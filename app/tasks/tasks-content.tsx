@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Task, AppContext, Project } from '@/lib/types'
+import type { Task, AppContext } from '@/lib/types'
 import { useProject } from '@/lib/project-context'
 import toast from 'react-hot-toast'
 import {
@@ -20,7 +20,6 @@ import {
   Filter,
   GripVertical,
   Check,
-  FolderKanban,
 } from 'lucide-react'
 
 interface TasksContentProps {
@@ -118,7 +117,10 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setSaving(false)
+      return
+    }
 
     const taskData = {
       user_id: user.id,
