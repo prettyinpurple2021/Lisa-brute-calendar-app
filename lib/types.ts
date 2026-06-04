@@ -19,6 +19,11 @@ export interface CalendarEvent {
   color: string
   all_day: boolean
   project_id: string | null
+  is_recurring: boolean
+  recurrence_pattern: 'daily' | 'weekly' | 'monthly' | null
+  recurrence_interval: number
+  recurrence_end_date: string | null
+  parent_event_id: string | null
   created_at: string
   updated_at: string
 }
@@ -33,8 +38,27 @@ export interface Task {
   due_date: string | null
   app_context: AppContext | null
   project_id: string | null
+  is_recurring: boolean
+  recurrence_pattern: 'daily' | 'weekly' | 'monthly' | null
+  recurrence_interval: number
+  recurrence_end_date: string | null
+  parent_task_id: string | null
+  time_estimate_minutes: number | null
+  time_spent_minutes: number
+  is_tracking: boolean
+  tracking_started_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface TimeSession {
+  id: string
+  user_id: string
+  task_id: string
+  started_at: string
+  ended_at: string | null
+  duration_minutes: number | null
+  created_at: string
 }
 
 export interface Habit {

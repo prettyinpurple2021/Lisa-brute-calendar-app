@@ -26,7 +26,12 @@ import {
   Link,
   Unlink,
   Check,
+  Download,
+  FileText,
+  FileSpreadsheet,
 } from 'lucide-react'
+import { usePushNotifications } from '@/lib/use-push-notifications'
+import { exportToCSV, exportToPDF, ExportType } from '@/lib/export-utils'
 
 type Theme = 'light' | 'dark' | 'auto'
 type WeekStart = 'sunday' | 'monday'
@@ -58,6 +63,8 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
   const [githubConnected, setGithubConnected] = useState(!!profile?.github_access_token)
   const [githubUsername, setGithubUsername] = useState(profile?.github_username || null)
   const [disconnectingGithub, setDisconnectingGithub] = useState(false)
+  const [exporting, setExporting] = useState<string | null>(null)
+  const pushNotifications = usePushNotifications()
   const [preferences, setPreferences] = useState<Preferences>({
     theme: 'light',
     email_reminders: true,
@@ -144,6 +151,21 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
     }
     
     setDisconnectingGithub(false)
+  }
+
+  async function handleExport(type: ExportType, format: 'csv' | 'pdf') {
+    setExporting(`${type}-${format}`)
+    try {
+      if (format === 'csv') {
+        await exportToCSV(type)
+      } else {
+        await exportToPDF(type)
+      }
+      toast.success(`${type} exported as ${format.toUpperCase()}`)
+    } catch (err) {
+      toast.error(`Failed to export ${type}`)
+    }
+    setExporting(null)
   }
 
   async function handleSaveAll() {
@@ -345,6 +367,36 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Push Notifications */}
+            <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl">
+              <div>
+                <p className="font-bold">Push Notifications</p>
+                <p className="text-sm text-gray-600">
+                  {!pushNotifications.isSupported 
+                    ? 'Not supported in this browser' 
+                    : pushNotifications.isSubscribed 
+                    ? 'Enabled - you will receive browser notifications'
+                    : 'Click to enable browser notifications'}
+                </p>
+              </div>
+              {pushNotifications.isSupported && (
+                <button
+                  onClick={pushNotifications.isSubscribed ? pushNotifications.unsubscribe : pushNotifications.subscribe}
+                  disabled={pushNotifications.isLoading}
+                  className={`px-4 py-2 border-4 border-black rounded-xl font-bold transition-colors neo-hover ${
+                    pushNotifications.isSubscribed ? 'bg-lime' : 'bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  {pushNotifications.isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : pushNotifications.isSubscribed ? (
+                    'Enabled'
+                  ) : (
+                    'Enable'
+                  )}
+                </button>
+              )}
+            </div>
             <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl">
               <div>
                 <p className="font-bold">Email Reminders</p>
@@ -353,16 +405,6 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
               <ToggleSwitch
                 checked={preferences.email_reminders}
                 onChange={(v) => setPreferences({ ...preferences, email_reminders: v })}
-              />
-            </div>
-            <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl">
-              <div>
-                <p className="font-bold">Push Notifications</p>
-                <p className="text-sm text-gray-600">Browser notifications for reminders</p>
-              </div>
-              <ToggleSwitch
-                checked={preferences.push_notifications}
-                onChange={(v) => setPreferences({ ...preferences, push_notifications: v })}
               />
             </div>
             <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl">
@@ -465,6 +507,61 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Export Data */}
+      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
+        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-full bg-electric-blue flex items-center justify-center border-2 border-black">
+            <Download className="w-4 h-4 text-white" />
+          </div>
+          Export Data
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Download your data as CSV or PDF files.
+        </p>
+        <div className="space-y-3">
+          {([
+            { type: 'tasks', label: 'Tasks', icon: '✓' },
+            { type: 'events', label: 'Events', icon: '📅' },
+            { type: 'habits', label: 'Habits', icon: '🎯' },
+            { type: 'notes', label: 'Notes', icon: '📝' },
+            { type: 'time-sessions', label: 'Time Sessions', icon: '⏱️' },
+          ] as { type: ExportType; label: string; icon: string }[]).map(({ type, label, icon }) => (
+            <div key={type} className="flex items-center justify-between p-3 border-4 border-black rounded-xl">
+              <div className="flex items-center gap-2">
+                <span>{icon}</span>
+                <span className="font-bold">{label}</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleExport(type, 'csv')}
+                  disabled={exporting === `${type}-csv`}
+                  className="flex items-center gap-1 px-3 py-1.5 border-3 border-black rounded-lg font-bold text-sm bg-white hover:bg-gray-50 transition-colors"
+                >
+                  {exporting === `${type}-csv` ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="w-3 h-3" />
+                  )}
+                  CSV
+                </button>
+                <button
+                  onClick={() => handleExport(type, 'pdf')}
+                  disabled={exporting === `${type}-pdf`}
+                  className="flex items-center gap-1 px-3 py-1.5 border-3 border-black rounded-lg font-bold text-sm bg-white hover:bg-gray-50 transition-colors"
+                >
+                  {exporting === `${type}-pdf` ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <FileText className="w-3 h-3" />
+                  )}
+                  PDF
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Account Actions */}

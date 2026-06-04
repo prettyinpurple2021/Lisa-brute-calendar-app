@@ -21,6 +21,10 @@ import {
   GripVertical,
   Check,
   FolderKanban,
+  Repeat,
+  Clock,
+  Play,
+  Pause,
 } from 'lucide-react'
 
 interface TasksContentProps {
@@ -65,10 +69,21 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     appContext: null as AppContext | null,
     dueDate: '',
     projectId: null as string | null,
+    isRecurring: false,
+    recurrencePattern: 'daily' as 'daily' | 'weekly' | 'monthly',
+    recurrenceInterval: 1,
+    timeEstimate: '',
   })
   const [saving, setSaving] = useState(false)
+  const [trackingTaskId, setTrackingTaskId] = useState<string | null>(null)
   
   const { selectedProjectId, projects } = useProject()
+
+  // Find currently tracking task
+  useEffect(() => {
+    const tracking = tasks.find(t => t.is_tracking)
+    setTrackingTaskId(tracking?.id || null)
+  }, [tasks])
 
   // Filter tasks by selected project
   const projectFilteredTasks = selectedProjectId
@@ -93,6 +108,10 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
       appContext: appFilter,
       dueDate: '',
       projectId: selectedProjectId,
+      isRecurring: false,
+      recurrencePattern: 'daily',
+      recurrenceInterval: 1,
+      timeEstimate: '',
     })
     setShowModal(true)
   }
@@ -107,6 +126,10 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
       appContext: task.app_context,
       dueDate: task.due_date || '',
       projectId: task.project_id,
+      isRecurring: task.is_recurring || false,
+      recurrencePattern: task.recurrence_pattern || 'daily',
+      recurrenceInterval: task.recurrence_interval || 1,
+      timeEstimate: task.time_estimate_minutes ? String(task.time_estimate_minutes) : '',
     })
     setShowModal(true)
   }
@@ -129,6 +152,10 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
       app_context: formData.appContext,
       due_date: formData.dueDate || null,
       project_id: formData.projectId,
+      is_recurring: formData.isRecurring,
+      recurrence_pattern: formData.isRecurring ? formData.recurrencePattern : null,
+      recurrence_interval: formData.isRecurring ? formData.recurrenceInterval : 1,
+      time_estimate_minutes: formData.timeEstimate ? parseInt(formData.timeEstimate) : null,
     }
 
     if (editingTask) {
@@ -196,23 +223,132 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     router.refresh()
   }
 
+  async function toggleTimeTracking(task: Task, e: React.MouseEvent) {
+    e.stopPropagation()
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    if (task.is_tracking) {
+      // Stop tracking
+      const startedAt = new Date(task.tracking_started_at!)
+      const now = new Date()
+      const durationMinutes = Math.round((now.getTime() - startedAt.getTime()) / 60000)
+
+      // Create time session
+      await supabase.from('time_sessions').insert({
+        user_id: user.id,
+        task_id: task.id,
+        started_at: task.tracking_started_at,
+        ended_at: now.toISOString(),
+        duration_minutes: durationMinutes,
+      })
+
+      // Update task
+      const { data } = await supabase
+        .from('tasks')
+        .update({
+          is_tracking: false,
+          tracking_started_at: null,
+          time_spent_minutes: (task.time_spent_minutes || 0) + durationMinutes,
+        })
+        .eq('id', task.id)
+        .select()
+        .single()
+
+      if (data) {
+        setTasks(tasks.map(t => t.id === task.id ? data : t))
+        toast.success(`Tracked ${durationMinutes} minutes`)
+      }
+    } else {
+      // Stop any other tracking task first
+      if (trackingTaskId) {
+        const trackingTask = tasks.find(t => t.id === trackingTaskId)
+        if (trackingTask) {
+          const startedAt = new Date(trackingTask.tracking_started_at!)
+          const now = new Date()
+          const durationMinutes = Math.round((now.getTime() - startedAt.getTime()) / 60000)
+
+          await supabase.from('time_sessions').insert({
+            user_id: user.id,
+            task_id: trackingTask.id,
+            started_at: trackingTask.tracking_started_at,
+            ended_at: now.toISOString(),
+            duration_minutes: durationMinutes,
+          })
+
+          await supabase
+            .from('tasks')
+            .update({
+              is_tracking: false,
+              tracking_started_at: null,
+              time_spent_minutes: (trackingTask.time_spent_minutes || 0) + durationMinutes,
+            })
+            .eq('id', trackingTask.id)
+        }
+      }
+
+      // Start tracking this task
+      const { data } = await supabase
+        .from('tasks')
+        .update({
+          is_tracking: true,
+          tracking_started_at: new Date().toISOString(),
+        })
+        .eq('id', task.id)
+        .select()
+        .single()
+
+      if (data) {
+        setTasks(tasks.map(t => {
+          if (t.id === task.id) return data
+          if (t.id === trackingTaskId) return { ...t, is_tracking: false, tracking_started_at: null }
+          return t
+        }))
+        toast.success('Timer started')
+      }
+    }
+    router.refresh()
+  }
+
   function TaskCard({ task }: { task: Task }) {
     const priorityConfig = PRIORITIES.find(p => p.id === task.priority)!
     const appConfig = APP_FILTERS.find(a => a.id === task.app_context)
 
     return (
       <div
-        className="neo-card bg-card p-3 cursor-pointer hover:translate-y-[-2px] transition-transform"
+        className={`neo-card bg-card p-3 cursor-pointer hover:translate-y-[-2px] transition-transform ${
+          task.is_tracking ? 'ring-2 ring-lime ring-offset-2' : ''
+        }`}
         onClick={() => openEditTaskModal(task)}
       >
-        <div className="flex items-start gap-2 mb-2">
-          <span className={`px-2 py-0.5 rounded text-xs font-bold ${priorityConfig.color}`}>
-            {priorityConfig.label}
-          </span>
-          {appConfig && appConfig.id && (
-            <span className={`px-2 py-0.5 rounded text-xs font-bold ${appConfig.color} text-foreground`}>
-              {appConfig.name}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${priorityConfig.color}`}>
+              {priorityConfig.label}
             </span>
+            {appConfig && appConfig.id && (
+              <span className={`px-2 py-0.5 rounded text-xs font-bold ${appConfig.color} text-foreground`}>
+                {appConfig.name}
+              </span>
+            )}
+          </div>
+          {task.status !== 'done' && (
+            <button
+              onClick={(e) => toggleTimeTracking(task, e)}
+              className={`p-1.5 rounded-lg transition-all ${
+                task.is_tracking 
+                  ? 'bg-lime neo-border animate-pulse' 
+                  : 'bg-muted hover:bg-muted/80 neo-border border-2'
+              }`}
+              title={task.is_tracking ? 'Stop timer' : 'Start timer'}
+            >
+              {task.is_tracking ? (
+                <Pause className="w-3.5 h-3.5" />
+              ) : (
+                <Play className="w-3.5 h-3.5" />
+              )}
+            </button>
           )}
         </div>
         <p className="font-bold mb-1 line-clamp-2">{task.title}</p>
@@ -224,6 +360,25 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
             Due: {new Date(task.due_date).toLocaleDateString()}
           </p>
         )}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {task.is_recurring && (
+            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-secondary rounded-full">
+              <Repeat className="w-3 h-3" />
+              {task.recurrence_pattern}
+            </span>
+          )}
+          {task.time_estimate_minutes && (
+            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-muted rounded-full">
+              <Clock className="w-3 h-3" />
+              {task.time_estimate_minutes}m
+            </span>
+          )}
+          {task.time_spent_minutes > 0 && (
+            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-lime rounded-full">
+              {task.time_spent_minutes}m tracked
+            </span>
+          )}
+        </div>
       </div>
     )
   }
@@ -401,6 +556,56 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
                       <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Time Estimate */}
+                <div>
+                  <label className="block text-sm font-bold mb-1">Time Estimate (minutes)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.timeEstimate}
+                    onChange={(e) => setFormData({ ...formData, timeEstimate: e.target.value })}
+                    className="neo-input w-full"
+                    placeholder="e.g., 30"
+                  />
+                </div>
+
+                {/* Recurring */}
+                <div className="p-3 border-2 border-dashed border-foreground/30 rounded-xl">
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.isRecurring}
+                      onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+                      className="w-5 h-5 rounded border-2 border-black"
+                    />
+                    <Repeat className="w-4 h-4" />
+                    <span className="font-bold">Recurring Task</span>
+                  </label>
+                  
+                  {formData.isRecurring && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-sm">Repeat every</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={formData.recurrenceInterval}
+                        onChange={(e) => setFormData({ ...formData, recurrenceInterval: parseInt(e.target.value) || 1 })}
+                        className="neo-input w-16 text-center"
+                      />
+                      <select
+                        value={formData.recurrencePattern}
+                        onChange={(e) => setFormData({ ...formData, recurrencePattern: e.target.value as 'daily' | 'weekly' | 'monthly' })}
+                        className="neo-input"
+                      >
+                        <option value="daily">day(s)</option>
+                        <option value="weekly">week(s)</option>
+                        <option value="monthly">month(s)</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 pt-2">

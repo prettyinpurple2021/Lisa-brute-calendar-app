@@ -22,6 +22,7 @@ import {
   FolderKanban,
   ChevronDown,
   Plus,
+  Keyboard,
 } from 'lucide-react'
 import { QuickCaptureModal } from './quick-capture-modal'
 import { useProject, ProjectProvider } from '@/lib/project-context'
@@ -71,6 +72,7 @@ function AppShellInner({ children, currentPage }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false)
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false)
   const [user, setUser] = useState<{ email?: string; display_name?: string } | null>(null)
   
   const { projects, selectedProjectId, selectedProject, setSelectedProjectId } = useProject()
@@ -96,6 +98,11 @@ function AppShellInner({ children, currentPage }: AppShellProps) {
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Don't trigger shortcuts when typing in inputs
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      return
+    }
+
     // Quick capture: Cmd/Ctrl + K
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault()
@@ -103,8 +110,38 @@ function AppShellInner({ children, currentPage }: AppShellProps) {
       return
     }
 
-    // App navigation: Cmd/Ctrl + 1-8
-    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '8') {
+    // Shortcuts help: ?
+    if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault()
+      setShortcutsModalOpen(true)
+      return
+    }
+
+    // Go home: g then h
+    if (e.key === 'g' && !e.metaKey && !e.ctrlKey) {
+      const handleNext = (e2: KeyboardEvent) => {
+        if (e2.key === 'h') {
+          e2.preventDefault()
+          router.push('/dashboard')
+        }
+        window.removeEventListener('keydown', handleNext)
+      }
+      window.addEventListener('keydown', handleNext)
+      setTimeout(() => window.removeEventListener('keydown', handleNext), 1000)
+      return
+    }
+
+    // Escape to close modals
+    if (e.key === 'Escape') {
+      setQuickCaptureOpen(false)
+      setShortcutsModalOpen(false)
+      setMobileMenuOpen(false)
+      setProjectDropdownOpen(false)
+      return
+    }
+
+    // App navigation: Cmd/Ctrl + 1-9
+    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
       e.preventDefault()
       const app = APPS[parseInt(e.key) - 1]
       if (app) {
@@ -278,14 +315,24 @@ function AppShellInner({ children, currentPage }: AppShellProps) {
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="w-full neo-btn bg-muted text-muted-foreground flex items-center justify-center gap-2 text-sm"
-            aria-label="Sign out of your account"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShortcutsModalOpen(true)}
+              className="neo-btn bg-muted text-muted-foreground p-2"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="flex-1 neo-btn bg-muted text-muted-foreground flex items-center justify-center gap-2 text-sm"
+              aria-label="Sign out of your account"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -398,6 +445,65 @@ function AppShellInner({ children, currentPage }: AppShellProps) {
         open={quickCaptureOpen} 
         onClose={() => setQuickCaptureOpen(false)} 
       />
+
+      {/* Keyboard Shortcuts Modal */}
+      {shortcutsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/60 backdrop-blur-sm" onClick={() => setShortcutsModalOpen(false)} />
+          <div className="relative w-full max-w-lg bounce-in">
+            <div className="neo-card overflow-hidden">
+              <div className="bg-secondary px-4 py-3 flex items-center justify-between border-b-4 border-foreground">
+                <div className="flex items-center gap-2">
+                  <Keyboard className="w-5 h-5" />
+                  <h3 className="font-bold">Keyboard Shortcuts</h3>
+                </div>
+                <button onClick={() => setShortcutsModalOpen(false)} className="hover:bg-foreground/10 p-1 rounded">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div>
+                  <h4 className="font-bold text-sm text-muted-foreground mb-2">Navigation</h4>
+                  <div className="space-y-2">
+                    {APPS.map((app, i) => (
+                      <div key={app.id} className="flex items-center justify-between">
+                        <span className="text-sm">{app.name}</span>
+                        <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded neo-border border-2">Cmd+{i + 1}</kbd>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="border-t-2 border-foreground/20 pt-4">
+                  <h4 className="font-bold text-sm text-muted-foreground mb-2">Actions</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Quick Capture</span>
+                      <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded neo-border border-2">Cmd+K</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Go to Dashboard</span>
+                      <div className="flex gap-1">
+                        <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded neo-border border-2">G</kbd>
+                        <span className="text-xs text-muted-foreground">then</span>
+                        <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded neo-border border-2">H</kbd>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Show Shortcuts</span>
+                      <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded neo-border border-2">?</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Close Modal</span>
+                      <kbd className="px-2 py-1 text-xs font-mono bg-muted rounded neo-border border-2">Esc</kbd>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
