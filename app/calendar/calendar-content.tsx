@@ -127,10 +127,7 @@ export function CalendarContent({ initialEvents }: CalendarContentProps) {
     setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setSaving(false)
-      return
-    }
+    if (!user) return
 
     const eventData = {
       user_id: user.id,

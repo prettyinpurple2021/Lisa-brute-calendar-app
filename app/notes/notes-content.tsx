@@ -43,7 +43,7 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
   const [newType, setNewType] = useState<CaptureType>('thought')
   const [saving, setSaving] = useState(false)
   
-  const { selectedProjectId } = useProject()
+  const { selectedProjectId, projects } = useProject()
   
   // Filter by project first
   const projectFilteredCaptures = selectedProjectId
@@ -66,10 +66,7 @@ export function NotesContent({ initialCaptures }: NotesContentProps) {
     setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setSaving(false)
-      return
-    }
+    if (!user) return
 
     const { data, error } = await supabase
       .from('quick_captures')

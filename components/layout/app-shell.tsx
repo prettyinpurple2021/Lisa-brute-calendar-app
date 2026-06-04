@@ -65,7 +65,7 @@ export function AppShell({ children, currentPage }: AppShellProps) {
   )
 }
 
-function AppShellInner({ children }: AppShellProps) {
+function AppShellInner({ children, currentPage }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -103,10 +103,10 @@ function AppShellInner({ children }: AppShellProps) {
       return
     }
 
-    // App navigation: Cmd/Ctrl + 1-9
-    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
+    // App navigation: Cmd/Ctrl + 1-8
+    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '8') {
       e.preventDefault()
-      const app = APPS.find((item) => item.shortcut === e.key)
+      const app = APPS[parseInt(e.key) - 1]
       if (app) {
         router.push(app.href)
       }
@@ -122,8 +122,20 @@ function AppShellInner({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Skip to main content link for keyboard users */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:neo-btn focus:bg-primary focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
+
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col bg-card neo-border border-l-0 border-t-0 border-b-0 z-40">
+      <aside 
+        className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col bg-card neo-border border-l-0 border-t-0 border-b-0 z-40"
+        role="navigation"
+        aria-label="Main navigation"
+      >
         {/* Logo */}
         <div className="p-4 border-b-4 border-foreground">
           <Link href="/dashboard" className="flex items-center gap-3 group">
@@ -139,6 +151,9 @@ function AppShellInner({ children }: AppShellProps) {
           <button
             onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
             className="w-full neo-btn bg-white flex items-center gap-2 text-left"
+            aria-expanded={projectDropdownOpen}
+            aria-haspopup="listbox"
+            aria-label={selectedProject ? `Current project: ${selectedProject.name}` : 'All projects selected'}
           >
             {selectedProject ? (
               <>
@@ -157,7 +172,11 @@ function AppShellInner({ children }: AppShellProps) {
           </button>
           
           {projectDropdownOpen && (
-            <div className="absolute left-3 right-3 top-full mt-1 bg-white border-4 border-black rounded-xl shadow-lg z-50 overflow-hidden">
+            <div 
+              className="absolute left-3 right-3 top-full mt-1 bg-white border-4 border-black rounded-xl shadow-lg z-50 overflow-hidden"
+              role="listbox"
+              aria-label="Select project"
+            >
               <button
                 onClick={() => {
                   setSelectedProjectId(null)
@@ -166,6 +185,8 @@ function AppShellInner({ children }: AppShellProps) {
                 className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-100 transition-colors ${
                   !selectedProjectId ? 'bg-primary/10' : ''
                 }`}
+                role="option"
+                aria-selected={!selectedProjectId}
               >
                 <FolderKanban className="w-5 h-5" />
                 <span className="font-semibold">All Projects</span>
@@ -183,6 +204,8 @@ function AppShellInner({ children }: AppShellProps) {
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-100 transition-colors ${
                     selectedProjectId === project.id ? 'bg-primary/10' : ''
                   }`}
+                  role="option"
+                  aria-selected={selectedProjectId === project.id}
                 >
                   <div className={`w-6 h-6 rounded-md border-2 border-black flex items-center justify-center text-sm ${getProjectColorClass(project.color)}`}>
                     {project.icon}
@@ -205,7 +228,7 @@ function AppShellInner({ children }: AppShellProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto" aria-label="App navigation">
           {APPS.map((app, index) => {
             const Icon = app.icon
             const isActive = pathname.startsWith(app.href)
@@ -213,6 +236,7 @@ function AppShellInner({ children }: AppShellProps) {
               <Link
                 key={app.id}
                 href={app.href}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-all neo-hover slide-up opacity-0 ${
                   isActive
                     ? `${app.color} text-foreground neo-border neo-shadow-sm`
@@ -222,7 +246,7 @@ function AppShellInner({ children }: AppShellProps) {
               >
                 <Icon className="w-5 h-5" />
                 <span className="flex-1">{app.name}</span>
-                <kbd className="hidden xl:inline-flex h-5 px-1.5 text-[10px] font-mono bg-muted rounded border-2 border-foreground items-center">
+                <kbd className="hidden xl:inline-flex h-5 px-1.5 text-[10px] font-mono bg-muted rounded border-2 border-foreground items-center" aria-hidden="true">
                   {app.shortcut}
                 </kbd>
               </Link>
@@ -235,6 +259,7 @@ function AppShellInner({ children }: AppShellProps) {
           <button
             onClick={() => setQuickCaptureOpen(true)}
             className="w-full neo-btn bg-secondary text-secondary-foreground flex items-center justify-center gap-2"
+            aria-label="Open quick capture (Keyboard shortcut: Ctrl+K)"
           >
             <Zap className="w-4 h-4" />
             <span>Quick Capture</span>
@@ -256,6 +281,7 @@ function AppShellInner({ children }: AppShellProps) {
           <button
             onClick={handleSignOut}
             className="w-full neo-btn bg-muted text-muted-foreground flex items-center justify-center gap-2 text-sm"
+            aria-label="Sign out of your account"
           >
             <LogOut className="w-4 h-4" />
             Sign Out
@@ -276,12 +302,15 @@ function AppShellInner({ children }: AppShellProps) {
           <button
             onClick={() => setQuickCaptureOpen(true)}
             className="neo-btn p-2 bg-secondary text-secondary-foreground"
+            aria-label="Quick capture"
           >
             <Zap className="w-5 h-5" />
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="neo-btn p-2 bg-muted"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -290,9 +319,9 @@ function AppShellInner({ children }: AppShellProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-30 pt-16">
-          <div className="absolute inset-0 bg-foreground/50" onClick={() => setMobileMenuOpen(false)} />
-          <nav className="relative bg-card neo-border border-t-0 max-h-[calc(100vh-4rem)] overflow-y-auto bounce-in">
+        <div className="lg:hidden fixed inset-0 z-30 pt-16" role="dialog" aria-modal="true" aria-label="Navigation menu">
+          <div className="absolute inset-0 bg-foreground/50" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
+          <nav className="relative bg-card neo-border border-t-0 max-h-[calc(100vh-4rem)] overflow-y-auto bounce-in" aria-label="Mobile navigation">
             <div className="p-4 space-y-2">
               {APPS.map((app) => {
                 const Icon = app.icon
@@ -327,7 +356,7 @@ function AppShellInner({ children }: AppShellProps) {
       )}
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-card neo-border border-l-0 border-r-0 border-b-0 z-40 flex items-center justify-around px-2">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-card neo-border border-l-0 border-r-0 border-b-0 z-40 flex items-center justify-around px-2" aria-label="Quick navigation">
         {APPS.slice(0, 5).map((app) => {
           const Icon = app.icon
           const isActive = pathname.startsWith(app.href)
@@ -335,6 +364,8 @@ function AppShellInner({ children }: AppShellProps) {
             <Link
               key={app.id}
               href={app.href}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={app.name}
               className={`flex flex-col items-center justify-center w-14 h-14 rounded-lg transition-all ${
                 isActive ? `${app.color} neo-border scale-110` : 'hover:bg-muted'
               }`}
@@ -347,7 +378,7 @@ function AppShellInner({ children }: AppShellProps) {
       </nav>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 pb-20 lg:pb-0 min-h-screen">
+      <main className="lg:ml-64 pt-16 lg:pt-0 pb-20 lg:pb-0 min-h-screen" role="main" id="main-content">
         {/* Page Header */}
         {currentApp && (
           <div className={`${currentApp.color} neo-border border-l-0 border-r-0 border-t-0 px-6 py-4`}>

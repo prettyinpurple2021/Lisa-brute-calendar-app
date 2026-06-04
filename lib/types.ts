@@ -76,6 +76,17 @@ export interface QuickCapture {
   created_at: string
 }
 
+export interface DailyGoal {
+  id: string
+  user_id: string
+  title: string
+  completed: boolean
+  goal_date: string
+  project_id: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Project {
   id: string
   user_id: string

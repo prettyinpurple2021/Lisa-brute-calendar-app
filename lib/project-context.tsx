@@ -69,7 +69,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     if (user) {
       await supabase
         .from('user_preferences')
-        .upsert({ user_id: user.id, selected_project_id: id })
+        .update({ selected_project_id: id })
+        .eq('user_id', user.id)
     }
   }
 

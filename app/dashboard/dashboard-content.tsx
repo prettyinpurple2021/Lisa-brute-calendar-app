@@ -4,7 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Profile, CalendarEvent, Task, Habit, HabitCompletion, QuickCapture } from '@/lib/types'
+import type { Profile, CalendarEvent, Task, Habit, HabitCompletion, QuickCapture, DailyGoal } from '@/lib/types'
+import { useProject } from '@/lib/project-context'
+import toast from 'react-hot-toast'
 import {
   Calendar,
   CheckSquare,
@@ -21,6 +23,10 @@ import {
   Sparkles,
   Target,
   Star,
+  Plus,
+  X,
+  Check,
+  Trash2,
 } from 'lucide-react'
 
 interface DashboardContentProps {
@@ -31,6 +37,7 @@ interface DashboardContentProps {
   habitCompletions: HabitCompletion[]
   currentEnergy: number | null
   unprocessedCaptures: QuickCapture[]
+  dailyGoals: DailyGoal[]
 }
 
 const energyLevels = [
@@ -56,13 +63,33 @@ export function DashboardContent({
   habitCompletions,
   currentEnergy,
   unprocessedCaptures,
+  dailyGoals: initialDailyGoals,
 }: DashboardContentProps) {
   const router = useRouter()
   const [selectedEnergy, setSelectedEnergy] = useState<number | null>(currentEnergy)
   const [savingEnergy, setSavingEnergy] = useState(false)
+  const [dailyGoals, setDailyGoals] = useState(initialDailyGoals)
+  const [newGoalText, setNewGoalText] = useState('')
+  const [addingGoal, setAddingGoal] = useState(false)
+  
+  const { selectedProjectId } = useProject()
 
   const today = new Date().toISOString().split('T')[0]
   const greeting = getGreeting()
+  
+  // Filter by project
+  const filteredEvents = selectedProjectId 
+    ? todayEvents.filter(e => e.project_id === selectedProjectId)
+    : todayEvents
+  const filteredTasks = selectedProjectId
+    ? tasks.filter(t => t.project_id === selectedProjectId)
+    : tasks
+  const filteredHabits = selectedProjectId
+    ? habits.filter(h => h.project_id === selectedProjectId)
+    : habits
+  const filteredGoals = selectedProjectId
+    ? dailyGoals.filter(g => g.project_id === selectedProjectId)
+    : dailyGoals
 
   async function logEnergy(level: number) {
     setSelectedEnergy(level)
@@ -79,6 +106,62 @@ export function DashboardContent({
 
     setSavingEnergy(false)
     router.refresh()
+  }
+
+  async function addDailyGoal() {
+    if (!newGoalText.trim()) return
+    setAddingGoal(true)
+    
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data, error } = await supabase.from('daily_goals').insert({
+      user_id: user.id,
+      title: newGoalText.trim(),
+      goal_date: today,
+      project_id: selectedProjectId,
+    }).select().single()
+
+    if (error) {
+      toast.error('Failed to add goal')
+    } else if (data) {
+      setDailyGoals([...dailyGoals, data])
+      setNewGoalText('')
+      toast.success('Goal added!')
+    }
+    setAddingGoal(false)
+  }
+
+  async function toggleGoal(goal: DailyGoal) {
+    const supabase = createClient()
+    const newCompleted = !goal.completed
+    
+    const { error } = await supabase
+      .from('daily_goals')
+      .update({ completed: newCompleted })
+      .eq('id', goal.id)
+
+    if (error) {
+      toast.error('Failed to update goal')
+    } else {
+      setDailyGoals(dailyGoals.map(g => g.id === goal.id ? { ...g, completed: newCompleted } : g))
+      if (newCompleted) {
+        toast.success('Goal completed!')
+      }
+    }
+  }
+
+  async function deleteGoal(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase.from('daily_goals').delete().eq('id', id)
+
+    if (error) {
+      toast.error('Failed to delete goal')
+    } else {
+      setDailyGoals(dailyGoals.filter(g => g.id !== id))
+      toast.success('Goal deleted!')
+    }
   }
 
   async function toggleHabit(habit: Habit) {
@@ -129,11 +212,12 @@ export function DashboardContent({
     return streak
   }
 
-  const urgentTasks = tasks.filter(t => t.priority === 'urgent' || t.priority === 'high')
-  const totalTasks = tasks.length
-  const completedTodayHabits = habits.filter(h => 
+  const urgentTasks = filteredTasks.filter(t => t.priority === 'urgent' || t.priority === 'high')
+  const totalTasks = filteredTasks.length
+  const completedTodayHabits = filteredHabits.filter(h => 
     habitCompletions.some(c => c.habit_id === h.id && c.completed_date === today)
   ).length
+  const completedGoals = filteredGoals.filter(g => g.completed).length
 
   return (
     <div className="space-y-6">
@@ -150,7 +234,7 @@ export function DashboardContent({
           </div>
           <div className="flex gap-3">
             <div className="neo-card bg-card p-3 text-center min-w-[80px]">
-              <p className="text-2xl font-black">{todayEvents.length}</p>
+              <p className="text-2xl font-black">{filteredEvents.length}</p>
               <p className="text-xs font-semibold text-muted-foreground">Events</p>
             </div>
             <div className="neo-card bg-card p-3 text-center min-w-[80px]">
@@ -158,11 +242,83 @@ export function DashboardContent({
               <p className="text-xs font-semibold text-muted-foreground">Urgent</p>
             </div>
             <div className="neo-card bg-card p-3 text-center min-w-[80px]">
-              <p className="text-2xl font-black">{completedTodayHabits}/{habits.length}</p>
+              <p className="text-2xl font-black">{completedTodayHabits}/{filteredHabits.length}</p>
               <p className="text-xs font-semibold text-muted-foreground">Habits</p>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Daily Goals */}
+      <div className="neo-card p-5 bg-gradient-to-r from-primary/10 to-secondary/10">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-black flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            Today&apos;s Goals
+            {filteredGoals.length > 0 && (
+              <span className="px-2 py-0.5 bg-primary text-primary-foreground rounded-full text-sm">
+                {completedGoals}/{filteredGoals.length}
+              </span>
+            )}
+          </h3>
+        </div>
+        
+        {/* Add Goal Input */}
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="Add a goal for today..."
+            value={newGoalText}
+            onChange={(e) => setNewGoalText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addDailyGoal()}
+            className="neo-input flex-1"
+          />
+          <button
+            onClick={addDailyGoal}
+            disabled={addingGoal || !newGoalText.trim()}
+            className="neo-btn bg-primary text-primary-foreground disabled:opacity-50"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Goals List */}
+        {filteredGoals.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <Target className="w-10 h-10 mx-auto mb-2 opacity-50" />
+            <p className="font-medium">No goals set for today</p>
+            <p className="text-sm">Add some goals to stay focused!</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredGoals.map((goal) => (
+              <div
+                key={goal.id}
+                className={`flex items-center gap-3 p-3 rounded-lg transition-all neo-border border-2 ${
+                  goal.completed ? 'bg-lime/20' : 'bg-card'
+                }`}
+              >
+                <button
+                  onClick={() => toggleGoal(goal)}
+                  className={`w-6 h-6 rounded-full neo-border flex items-center justify-center transition-all ${
+                    goal.completed ? 'bg-lime' : 'bg-card hover:bg-muted'
+                  }`}
+                >
+                  {goal.completed && <Check className="w-4 h-4" />}
+                </button>
+                <p className={`flex-1 font-medium ${goal.completed ? 'line-through opacity-60' : ''}`}>
+                  {goal.title}
+                </p>
+                <button
+                  onClick={() => deleteGoal(goal.id)}
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -216,7 +372,7 @@ export function DashboardContent({
               View all <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          {todayEvents.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p className="font-medium">No events scheduled today</p>
@@ -226,7 +382,7 @@ export function DashboardContent({
             </div>
           ) : (
             <div className="space-y-2 max-h-[200px] overflow-y-auto">
-              {todayEvents.map((event) => (
+              {filteredEvents.map((event) => (
                 <div
                   key={event.id}
                   className="flex items-center gap-3 p-3 bg-muted rounded-lg neo-border border-2"
@@ -257,7 +413,7 @@ export function DashboardContent({
               Details <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          {habits.length === 0 ? (
+          {filteredHabits.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Target className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p className="font-medium">No habits tracked yet</p>
@@ -267,7 +423,7 @@ export function DashboardContent({
             </div>
           ) : (
             <div className="space-y-2">
-              {habits.map((habit) => {
+              {filteredHabits.map((habit) => {
                 const isCompleted = habitCompletions.some(
                   c => c.habit_id === habit.id && c.completed_date === today
                 )
@@ -315,7 +471,7 @@ export function DashboardContent({
               View all <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          {tasks.length === 0 ? (
+          {filteredTasks.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Sparkles className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p className="font-medium">All caught up!</p>
@@ -325,7 +481,7 @@ export function DashboardContent({
             </div>
           ) : (
             <div className="space-y-2 max-h-[200px] overflow-y-auto">
-              {tasks.slice(0, 5).map((task) => (
+              {filteredTasks.slice(0, 5).map((task) => (
                 <div
                   key={task.id}
                   className="flex items-center gap-3 p-3 bg-muted rounded-lg neo-border border-2"

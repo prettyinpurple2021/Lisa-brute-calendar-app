@@ -61,10 +61,7 @@ export function ProjectsContent() {
 
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setSaving(false)
-      return
-    }
+    if (!user) return
 
     if (editingProject) {
       await supabase
