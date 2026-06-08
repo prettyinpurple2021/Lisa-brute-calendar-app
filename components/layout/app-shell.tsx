@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Plus,
   Keyboard,
+  Battery,
 } from 'lucide-react'
 import { QuickCaptureModal } from './quick-capture-modal'
 import { useProject, ProjectProvider } from '@/lib/project-context'
@@ -34,10 +35,11 @@ const APPS = [
   { id: 'tasks', name: 'Tasks', icon: CheckSquare, color: 'bg-accent', href: '/tasks', shortcut: '3' },
   { id: 'notes', name: 'Notes', icon: FileText, color: 'bg-lime', href: '/notes', shortcut: '4' },
   { id: 'analytics', name: 'Analytics', icon: BarChart2, color: 'bg-neon-purple', href: '/analytics', shortcut: '5' },
-  { id: 'ai-chat', name: 'AI Chat', icon: MessageCircle, color: 'bg-hot-orange', href: '/ai-chat', shortcut: '6' },
-  { id: 'files', name: 'Files', icon: Folder, color: 'bg-electric-blue', href: '/files', shortcut: '7' },
-  { id: 'projects', name: 'Projects', icon: FolderKanban, color: 'bg-neon-green', href: '/projects', shortcut: '9' },
-  { id: 'settings', name: 'Settings', icon: Settings, color: 'bg-muted', href: '/settings', shortcut: '8' },
+  { id: 'energy', name: 'Energy', icon: Battery, color: 'bg-hot-orange', href: '/energy', shortcut: '6' },
+  { id: 'ai-chat', name: 'AI Chat', icon: MessageCircle, color: 'bg-electric-blue', href: '/ai-chat', shortcut: '7' },
+  { id: 'files', name: 'Files', icon: Folder, color: 'bg-neon-green', href: '/files', shortcut: '8' },
+  { id: 'projects', name: 'Projects', icon: FolderKanban, color: 'bg-hot-pink', href: '/projects', shortcut: '9' },
+  { id: 'settings', name: 'Settings', icon: Settings, color: 'bg-muted', href: '/settings', shortcut: '0' },
 ]
 
 const getProjectColorClass = (color: ProjectColor) => {
