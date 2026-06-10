@@ -1,7 +1,6 @@
-'use server'
-
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { AppShell } from '@/components/layout/app-shell'
 import { EnergyContent } from './energy-content'
 
 export default async function EnergyPage() {
@@ -19,5 +18,9 @@ export default async function EnergyPage() {
     .eq('user_id', user.id)
     .order('logged_at', { ascending: false })
 
-  return <EnergyContent initialEnergyLogs={energyLogs || []} />
+  return (
+    <AppShell>
+      <EnergyContent initialEnergyLogs={energyLogs || []} />
+    </AppShell>
+  )
 }

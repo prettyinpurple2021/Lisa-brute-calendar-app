@@ -36,18 +36,18 @@ export function EnergyContent({ initialEnergyLogs }: EnergyContentProps) {
   const [logs, setLogs] = useState(initialEnergyLogs)
   const [showModal, setShowModal] = useState(false)
   const [editingLog, setEditingLog] = useState<EnergyLog | null>(null)
-  const [formData, setFormData] = useState({ level: 3, notes: '' })
+  const [formData, setFormData] = useState({ level: 3, note: '' })
   const [saving, setSaving] = useState(false)
 
   function openNewModal() {
     setEditingLog(null)
-    setFormData({ level: 3, notes: '' })
+    setFormData({ level: 3, note: '' })
     setShowModal(true)
   }
 
   function openEditModal(log: EnergyLog) {
     setEditingLog(log)
-    setFormData({ level: log.level, notes: log.notes || '' })
+    setFormData({ level: log.level, note: log.note || '' })
     setShowModal(true)
   }
 
@@ -55,50 +55,53 @@ export function EnergyContent({ initialEnergyLogs }: EnergyContentProps) {
     e.preventDefault()
     setSaving(true)
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-    if (editingLog) {
-      const { data, error } = await supabase
-        .from('energy_logs')
-        .update({
-          level: formData.level,
-          notes: formData.notes || null,
-        })
-        .eq('id', editingLog.id)
-        .select()
-        .single()
+      if (editingLog) {
+        const { data, error } = await supabase
+          .from('energy_logs')
+          .update({
+            level: formData.level,
+            note: formData.note || null,
+          })
+          .eq('id', editingLog.id)
+          .select()
+          .single()
 
-      if (!error && data) {
-        setLogs(logs.map(l => l.id === editingLog.id ? data : l))
-        toast.success('Energy log updated!')
+        if (!error && data) {
+          setLogs(logs.map(l => l.id === editingLog.id ? data : l))
+          toast.success('Energy log updated!')
+        } else {
+          toast.error('Failed to update log')
+        }
       } else {
-        toast.error('Failed to update log')
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('energy_logs')
-        .insert({
-          user_id: user.id,
-          level: formData.level,
-          notes: formData.notes || null,
-          logged_at: new Date().toISOString(),
-        })
-        .select()
-        .single()
+        const { data, error } = await supabase
+          .from('energy_logs')
+          .insert({
+            user_id: user.id,
+            level: formData.level,
+            note: formData.note || null,
+            logged_at: new Date().toISOString(),
+          })
+          .select()
+          .single()
 
-      if (!error && data) {
-        setLogs([data, ...logs])
-        toast.success('Energy logged!')
-      } else {
-        toast.error('Failed to log energy')
+        if (!error && data) {
+          setLogs([data, ...logs])
+          toast.success('Energy logged!')
+        } else {
+          toast.error('Failed to log energy')
+        }
       }
+
+      setShowModal(false)
+      router.refresh()
+    } finally {
+      setSaving(false)
     }
-
-    setSaving(false)
-    setShowModal(false)
-    router.refresh()
   }
 
   async function deleteLog(id: string) {
@@ -200,8 +203,8 @@ export function EnergyContent({ initialEnergyLogs }: EnergyContentProps) {
                     <p className="font-bold">{levelConfig.label} Energy</p>
                     <span className="text-sm text-muted-foreground">Level {log.level}</span>
                   </div>
-                  {log.notes && (
-                    <p className="text-sm text-muted-foreground">{log.notes}</p>
+                  {log.note && (
+                    <p className="text-sm text-muted-foreground">{log.note}</p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
@@ -270,8 +273,8 @@ export function EnergyContent({ initialEnergyLogs }: EnergyContentProps) {
                 <div>
                   <label className="block text-sm font-bold mb-1">Notes (optional)</label>
                   <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    value={formData.note}
+                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                     className="neo-input w-full h-24 resize-none"
                     placeholder="What's affecting your energy? (e.g., 'Great sleep', 'Skipped lunch', etc.)"
                   />

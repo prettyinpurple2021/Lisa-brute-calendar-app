@@ -142,10 +142,11 @@ function AppShellInner({ children, currentPage }: AppShellProps) {
       return
     }
 
-    // App navigation: Cmd/Ctrl + 1-9
-    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
+    // App navigation: Cmd/Ctrl + 1-9 and 0 (10th app)
+    if ((e.metaKey || e.ctrlKey) && ((e.key >= '1' && e.key <= '9') || e.key === '0')) {
       e.preventDefault()
-      const app = APPS[parseInt(e.key) - 1]
+      const appIndex = e.key === '0' ? 9 : parseInt(e.key) - 1
+      const app = APPS[appIndex]
       if (app) {
         router.push(app.href)
       }
