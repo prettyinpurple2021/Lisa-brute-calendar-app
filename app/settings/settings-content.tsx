@@ -6,32 +6,18 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import type { Profile } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
-import {
-  User as UserIcon,
-  Mail,
-  Save,
-  LogOut,
-  Trash2,
-  Bell,
-  Palette,
-  Shield,
-  Clock,
-  Calendar,
-  Sun,
-  Moon,
-  Monitor,
-  Volume2,
-  Loader2,
-  Github,
-  Link,
-  Unlink,
-  Check,
-  Download,
-  FileText,
-  FileSpreadsheet,
-} from 'lucide-react'
+import { Save, Loader2 } from 'lucide-react'
 import { usePushNotifications } from '@/lib/use-push-notifications'
 import { exportToCSV, exportToPDF, ExportType } from '@/lib/export-utils'
+
+import { ProfileSettings } from './components/ProfileSettings'
+import { GithubSettings } from './components/GithubSettings'
+import { AppearanceSettings } from './components/AppearanceSettings'
+import { NotificationSettings } from './components/NotificationSettings'
+import { FocusTimerSettings } from './components/FocusTimerSettings'
+import { CalendarSettings } from './components/CalendarSettings'
+import { ExportSettings } from './components/ExportSettings'
+import { AccountSettings } from './components/AccountSettings'
 
 type Theme = 'light' | 'dark' | 'auto'
 type WeekStart = 'sunday' | 'monday'
@@ -100,106 +86,146 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
     }
 
     loadPreferences()
-  }, [supabase, user.id])
+  }, [user.id, supabase])
 
-  // Check for GitHub connection status from URL params
   useEffect(() => {
-    const githubStatus = searchParams.get('github')
-    if (githubStatus === 'connected') {
+    if (searchParams.get('github_connected') === 'true') {
       setGithubConnected(true)
-      toast.success('GitHub connected successfully!')
-      // Clean URL
-      router.replace('/settings')
-    } else if (githubStatus === 'error') {
-      toast.error('Failed to connect GitHub. Please try again.')
-      router.replace('/settings')
+      const username = searchParams.get('username')
+      if (username) setGithubUsername(username)
+      toast.success('Successfully connected to GitHub!')
+
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('github_connected')
+      newUrl.searchParams.delete('username')
+      window.history.replaceState({}, '', newUrl.toString())
     }
-  }, [searchParams, router])
+    if (searchParams.get('github_error') === 'true') {
+      toast.error('Failed to connect to GitHub. Please try again.')
+
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('github_error')
+      window.history.replaceState({}, '', newUrl.toString())
+    }
+  }, [searchParams])
 
   async function connectGithub() {
-    const redirectUrl = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin
-    
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        scopes: 'repo read:user user:email',
-        redirectTo: `${redirectUrl}/auth/github/callback`,
-      },
-    })
-
-    if (error) {
-      toast.error('Failed to connect GitHub')
-    }
+    window.location.href = '/api/auth/github'
   }
 
   async function disconnectGithub() {
-    if (!confirm('Are you sure you want to disconnect GitHub? This will unlink all repositories from your projects.')) {
-      return
-    }
-
     setDisconnectingGithub(true)
-    
-    const response = await fetch('/api/github/disconnect', { method: 'POST' })
-    
-    if (response.ok) {
+    try {
+      const response = await fetch('/api/auth/github/disconnect', {
+        method: 'POST',
+      })
+
+      if (!response.ok) throw new Error('Failed to disconnect')
+
       setGithubConnected(false)
       setGithubUsername(null)
-      toast.success('GitHub disconnected')
+      toast.success('Successfully disconnected from GitHub')
       router.refresh()
-    } else {
-      toast.error('Failed to disconnect GitHub')
+    } catch (error) {
+      console.error('Error disconnecting from GitHub:', error)
+      toast.error('Failed to disconnect from GitHub')
+    } finally {
+      setDisconnectingGithub(false)
     }
-    
-    setDisconnectingGithub(false)
   }
 
   async function handleExport(type: ExportType, format: 'csv' | 'pdf') {
     setExporting(`${type}-${format}`)
     try {
-      if (format === 'csv') {
-        await exportToCSV(type)
-      } else {
-        await exportToPDF(type)
+      let data
+      switch (type) {
+        case 'tasks':
+          const { data: tasks } = await supabase.from('tasks').select('*').eq('user_id', user.id)
+          data = tasks
+          break
+        case 'events':
+          const { data: events } = await supabase.from('events').select('*').eq('user_id', user.id)
+          data = events
+          break
+        case 'habits':
+          const { data: habits } = await supabase.from('habits').select('*').eq('user_id', user.id)
+          data = habits
+          break
+        case 'notes':
+          const { data: notes } = await supabase.from('notes').select('*').eq('user_id', user.id)
+          data = notes
+          break
+        case 'time-sessions':
+          const { data: sessions } = await supabase.from('time_sessions').select('*').eq('user_id', user.id)
+          data = sessions
+          break
       }
-      toast.success(`${type} exported as ${format.toUpperCase()}`)
-    } catch (err) {
+
+      if (!data || data.length === 0) {
+        toast.error(`No ${type} found to export`)
+        return
+      }
+
+      const filename = `${type}-export-${new Date().toISOString().split('T')[0]}`
+
+      if (format === 'csv') {
+        const csvString = await exportToCSV(data as any)
+        const blob = new Blob([csvString as any], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `${filename}.csv`
+        link.click()
+      } else {
+        exportToPDF(data as any, filename)
+      }
+
+      toast.success(`Successfully exported ${type} as ${format.toUpperCase()}`)
+    } catch (error) {
+      console.error(`Error exporting ${type}:`, error)
       toast.error(`Failed to export ${type}`)
+    } finally {
+      setExporting(null)
     }
-    setExporting(null)
   }
 
   async function handleSaveAll() {
     setSaving(true)
     setSaveStatus('idle')
 
-    // Update profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ 
-        display_name: displayName.trim(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id)
+    try {
+      if (displayName !== profile?.display_name) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ display_name: displayName })
+          .eq('id', user.id)
 
-    // Upsert preferences
-    const { error: prefsError } = await supabase
-      .from('user_preferences')
-      .upsert({
-        user_id: user.id,
-        ...preferences,
-        updated_at: new Date().toISOString(),
-      })
+        if (profileError) throw profileError
+      }
 
-    setSaving(false)
+      const { error: prefsError } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: user.id,
+          ...preferences,
+          updated_at: new Date().toISOString(),
+        })
 
-    if (profileError || prefsError) {
-      setSaveStatus('error')
-    } else {
+      if (prefsError) throw prefsError
+
       setSaveStatus('saved')
+      toast.success('Settings saved successfully!')
+
+      if (preferences.theme !== (profile as any)?.preferences?.theme) {
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      setSaveStatus('error')
+      toast.error('Failed to save settings. Please try again.')
+    } finally {
+      setSaving(false)
       setTimeout(() => setSaveStatus('idle'), 3000)
     }
-
-    router.refresh()
   }
 
   async function handleSignOut() {
@@ -208,387 +234,55 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
     router.refresh()
   }
 
-  function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-    return (
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative w-14 h-8 border-4 border-black rounded-full transition-colors ${
-          checked ? 'bg-lime' : 'bg-gray-200'
-        }`}
-      >
-        <div
-          className={`absolute top-0 w-5 h-5 bg-white border-2 border-black rounded-full transition-transform ${
-            checked ? 'translate-x-7' : 'translate-x-1'
-          }`}
-        />
-      </button>
-    )
-  }
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Profile Settings */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-hot-pink flex items-center justify-center border-2 border-black">
-            <UserIcon className="w-4 h-4 text-white" />
-          </div>
-          Profile Settings
-        </h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold mb-2">Display Name</label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full px-4 py-3 border-4 border-black rounded-xl font-medium focus:outline-none focus:ring-4 focus:ring-hot-pink/30"
-              placeholder="Your name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold mb-2">Email</label>
-            <div className="w-full px-4 py-3 border-4 border-black rounded-xl bg-gray-100 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-gray-500" />
-              <span className="text-gray-500">{user.email}</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-          </div>
-        </div>
-      </div>
+      <ProfileSettings
+        displayName={displayName}
+        setDisplayName={setDisplayName}
+        userEmail={user.email}
+      />
 
-      {/* GitHub Integration */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center border-2 border-black">
-            <Github className="w-4 h-4 text-white" />
-          </div>
-          GitHub Integration
-        </h3>
-        
-        {githubConnected ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl bg-lime/20">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-lime flex items-center justify-center border-2 border-black">
-                  <Check className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="font-bold">GitHub Connected</p>
-                  {githubUsername && (
-                    <p className="text-sm text-gray-600">@{githubUsername}</p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={disconnectGithub}
-                disabled={disconnectingGithub}
-                className="flex items-center gap-2 px-4 py-2 border-4 border-black rounded-xl font-bold bg-white hover:bg-red-50 text-red-600 transition-colors neo-hover"
-              >
-                {disconnectingGithub ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Unlink className="w-4 h-4" />
-                )}
-                Disconnect
-              </button>
-            </div>
-            <p className="text-sm text-gray-600">
-              You can link GitHub repositories to your projects from the Projects page.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Connect your GitHub account to link repositories to your projects and track your coding progress.
-            </p>
-            <button
-              onClick={connectGithub}
-              className="flex items-center gap-2 px-6 py-3 border-4 border-black rounded-xl font-bold bg-gray-900 text-white hover:bg-gray-800 transition-colors neo-hover"
-            >
-              <Github className="w-5 h-5" />
-              Connect GitHub
-            </button>
-          </div>
-        )}
-      </div>
+      <GithubSettings
+        githubConnected={githubConnected}
+        githubUsername={githubUsername}
+        disconnectGithub={disconnectGithub}
+        disconnectingGithub={disconnectingGithub}
+        connectGithub={connectGithub}
+      />
 
-      {/* Appearance */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-electric-cyan flex items-center justify-center border-2 border-black">
-            <Palette className="w-4 h-4 text-white" />
-          </div>
-          Appearance
-        </h3>
-        {loadingPrefs ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-electric-cyan" />
-          </div>
-        ) : (
-          <div>
-            <label className="block text-sm font-bold mb-3">Theme</label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: 'light', icon: Sun, label: 'Light' },
-                { value: 'dark', icon: Moon, label: 'Dark' },
-                { value: 'auto', icon: Monitor, label: 'System' },
-              ].map(({ value, icon: Icon, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setPreferences({ ...preferences, theme: value as Theme })}
-                  className={`p-4 border-4 border-black rounded-xl flex flex-col items-center gap-2 transition-all neo-hover ${
-                    preferences.theme === value
-                      ? 'bg-electric-cyan text-white'
-                      : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-bold text-sm">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <AppearanceSettings
+        theme={preferences.theme}
+        onChangeTheme={(theme) => setPreferences({ ...preferences, theme })}
+        loadingPrefs={loadingPrefs}
+      />
 
-      {/* Notifications */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-lime flex items-center justify-center border-2 border-black">
-            <Bell className="w-4 h-4 text-black" />
-          </div>
-          Notifications
-        </h3>
-        {loadingPrefs ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-lime" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Push Notifications */}
-            <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl">
-              <div>
-                <p className="font-bold">Push Notifications</p>
-                <p className="text-sm text-gray-600">
-                  {!pushNotifications.isSupported 
-                    ? 'Not supported in this browser' 
-                    : pushNotifications.isSubscribed 
-                    ? 'Enabled - you will receive browser notifications'
-                    : 'Click to enable browser notifications'}
-                </p>
-              </div>
-              {pushNotifications.isSupported && (
-                <button
-                  onClick={pushNotifications.isSubscribed ? pushNotifications.unsubscribe : pushNotifications.subscribe}
-                  disabled={pushNotifications.isLoading}
-                  className={`px-4 py-2 border-4 border-black rounded-xl font-bold transition-colors neo-hover ${
-                    pushNotifications.isSubscribed ? 'bg-lime' : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  {pushNotifications.isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : pushNotifications.isSubscribed ? (
-                    'Enabled'
-                  ) : (
-                    'Enable'
-                  )}
-                </button>
-              )}
-            </div>
-            <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl">
-              <div>
-                <p className="font-bold">Email Reminders</p>
-                <p className="text-sm text-gray-600">Get email notifications for events</p>
-              </div>
-              <ToggleSwitch
-                checked={preferences.email_reminders}
-                onChange={(v) => setPreferences({ ...preferences, email_reminders: v })}
-              />
-            </div>
-            <div className="flex items-center justify-between p-4 border-4 border-black rounded-xl">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-4 h-4" />
-                <div>
-                  <p className="font-bold">Sound Effects</p>
-                  <p className="text-sm text-gray-600">Play sounds for timers</p>
-                </div>
-              </div>
-              <ToggleSwitch
-                checked={preferences.sound_enabled}
-                onChange={(v) => setPreferences({ ...preferences, sound_enabled: v })}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      <NotificationSettings
+        preferences={preferences}
+        setPreferences={setPreferences}
+        pushNotifications={pushNotifications}
+        loadingPrefs={loadingPrefs}
+      />
 
-      {/* Focus Timer Settings */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-neon-purple flex items-center justify-center border-2 border-black">
-            <Clock className="w-4 h-4 text-white" />
-          </div>
-          Focus Timer
-        </h3>
-        {loadingPrefs ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-neon-purple" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-bold mb-2">Focus (min)</label>
-              <input
-                type="number"
-                min={5}
-                max={60}
-                value={preferences.focus_timer_duration}
-                onChange={(e) => setPreferences({ ...preferences, focus_timer_duration: parseInt(e.target.value) || 25 })}
-                className="w-full px-3 py-3 border-4 border-black rounded-xl font-bold text-center text-xl focus:outline-none focus:ring-4 focus:ring-neon-purple/30"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold mb-2">Break (min)</label>
-              <input
-                type="number"
-                min={1}
-                max={15}
-                value={preferences.break_duration}
-                onChange={(e) => setPreferences({ ...preferences, break_duration: parseInt(e.target.value) || 5 })}
-                className="w-full px-3 py-3 border-4 border-black rounded-xl font-bold text-center text-xl focus:outline-none focus:ring-4 focus:ring-lime/30"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold mb-2">Long (min)</label>
-              <input
-                type="number"
-                min={5}
-                max={30}
-                value={preferences.long_break_duration}
-                onChange={(e) => setPreferences({ ...preferences, long_break_duration: parseInt(e.target.value) || 15 })}
-                className="w-full px-3 py-3 border-4 border-black rounded-xl font-bold text-center text-xl focus:outline-none focus:ring-4 focus:ring-electric-cyan/30"
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      <FocusTimerSettings
+        preferences={preferences}
+        setPreferences={setPreferences}
+        loadingPrefs={loadingPrefs}
+      />
 
-      {/* Calendar Settings */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-hot-orange flex items-center justify-center border-2 border-black">
-            <Calendar className="w-4 h-4 text-white" />
-          </div>
-          Calendar
-        </h3>
-        {loadingPrefs ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-hot-orange" />
-          </div>
-        ) : (
-          <div>
-            <label className="block text-sm font-bold mb-3">Week Starts On</label>
-            <div className="grid grid-cols-2 gap-3">
-              {(['sunday', 'monday'] as WeekStart[]).map((day) => (
-                <button
-                  key={day}
-                  onClick={() => setPreferences({ ...preferences, week_start_day: day })}
-                  className={`p-4 border-4 border-black rounded-xl font-bold capitalize transition-all neo-hover ${
-                    preferences.week_start_day === day
-                      ? 'bg-hot-orange text-white'
-                      : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <CalendarSettings
+        weekStartDay={preferences.week_start_day}
+        onChangeWeekStartDay={(day) => setPreferences({ ...preferences, week_start_day: day })}
+        loadingPrefs={loadingPrefs}
+      />
 
-      {/* Export Data */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-electric-blue flex items-center justify-center border-2 border-black">
-            <Download className="w-4 h-4 text-white" />
-          </div>
-          Export Data
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Download your data as CSV or PDF files.
-        </p>
-        <div className="space-y-3">
-          {([
-            { type: 'tasks', label: 'Tasks', icon: '✓' },
-            { type: 'events', label: 'Events', icon: '📅' },
-            { type: 'habits', label: 'Habits', icon: '🎯' },
-            { type: 'notes', label: 'Notes', icon: '📝' },
-            { type: 'time-sessions', label: 'Time Sessions', icon: '⏱️' },
-          ] as { type: ExportType; label: string; icon: string }[]).map(({ type, label, icon }) => (
-            <div key={type} className="flex items-center justify-between p-3 border-4 border-black rounded-xl">
-              <div className="flex items-center gap-2">
-                <span>{icon}</span>
-                <span className="font-bold">{label}</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleExport(type, 'csv')}
-                  disabled={exporting === `${type}-csv`}
-                  className="flex items-center gap-1 px-3 py-1.5 border-3 border-black rounded-lg font-bold text-sm bg-white hover:bg-gray-50 transition-colors"
-                >
-                  {exporting === `${type}-csv` ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <FileSpreadsheet className="w-3 h-3" />
-                  )}
-                  CSV
-                </button>
-                <button
-                  onClick={() => handleExport(type, 'pdf')}
-                  disabled={exporting === `${type}-pdf`}
-                  className="flex items-center gap-1 px-3 py-1.5 border-3 border-black rounded-lg font-bold text-sm bg-white hover:bg-gray-50 transition-colors"
-                >
-                  {exporting === `${type}-pdf` ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <FileText className="w-3 h-3" />
-                  )}
-                  PDF
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ExportSettings
+        handleExport={handleExport}
+        exporting={exporting}
+      />
 
-      {/* Account Actions */}
-      <div className="border-4 border-black rounded-3xl p-6 bg-white neo-shadow">
-        <h3 className="text-lg font-black flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border-2 border-black">
-            <Shield className="w-4 h-4 text-white" />
-          </div>
-          Account
-        </h3>
-        <div className="space-y-3">
-          <button
-            onClick={handleSignOut}
-            className="w-full p-4 border-4 border-black rounded-xl font-bold flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 transition-colors neo-hover"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
-          <button
-            disabled
-            className="w-full p-4 border-4 border-black rounded-xl font-bold flex items-center justify-center gap-2 bg-red-100 text-red-600 opacity-50 cursor-not-allowed"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete Account (Coming Soon)
-          </button>
-        </div>
-      </div>
+      <AccountSettings
+        handleSignOut={handleSignOut}
+      />
 
       {/* Save Button */}
       <div className="sticky bottom-4 flex justify-end">
