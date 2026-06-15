@@ -84,7 +84,7 @@ export function FilesContent() {
     setError(null)
 
     try {
-      for (const file of Array.from(fileList)) {
+      const uploadPromises = Array.from(fileList).map(async (file) => {
         const formData = new FormData()
         formData.append('file', file)
 
@@ -94,7 +94,9 @@ export function FilesContent() {
         })
 
         if (!response.ok) throw new Error('Upload failed')
-      }
+      })
+
+      await Promise.all(uploadPromises)
       
       await fetchFiles()
       toast.success(`${fileList.length} file${fileList.length > 1 ? 's' : ''} uploaded!`)
