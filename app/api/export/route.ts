@@ -94,7 +94,7 @@ export async function GET(request: Request) {
       ...data.map(row => 
         headers.map(h => {
           let val = String(row[h] || '').replace(/"/g, '""')
-          if (/^[=+\-@]/.test(val)) {
+          if (/^\s*[=+\-@]/.test(val)) {
             val = "'" + val
           }
           return `"${val}"`
