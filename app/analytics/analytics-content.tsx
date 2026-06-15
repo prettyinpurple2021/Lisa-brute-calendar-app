@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Habit, HabitCompletion, EnergyLog, Task } from '@/lib/types'
@@ -55,6 +55,11 @@ export function AnalyticsContent({
     projectId: null as string | null,
   })
   const [saving, setSaving] = useState(false)
+  const pendingChanges = useRef<{
+    [key: string]: { habitId: string, date: string, toState: boolean, originalId?: string }
+  }>({})
+  const syncTimeout = useRef<NodeJS.Timeout | null>(null)
+
   
   const { selectedProjectId, projects } = useProject()
   
@@ -118,30 +123,96 @@ export function AnalyticsContent({
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const existingCompletion = completions.find(
-      c => c.habit_id === habitId && c.completed_date === date
-    )
+    let existingCompletionId: string | undefined
 
-    if (existingCompletion) {
-      await supabase.from('habit_completions').delete().eq('id', existingCompletion.id)
-      setCompletions(completions.filter(c => c.id !== existingCompletion.id))
-    } else {
-      const { data, error } = await supabase
-        .from('habit_completions')
-        .insert({
+    setCompletions(prev => {
+      const existing = prev.find(c => c.habit_id === habitId && c.completed_date === date)
+      if (existing) {
+        existingCompletionId = existing.id
+        return prev.filter(c => c.id !== existing.id)
+      } else {
+        const tempId = `temp-${Date.now()}-${Math.random()}`
+        return [...prev, {
+          id: tempId,
           habit_id: habitId,
           user_id: user.id,
           completed_date: date,
-        })
-        .select()
-        .single()
+          count: 1,
+          created_at: new Date().toISOString()
+        }]
+      }
+    })
 
-      if (!error && data) {
-        setCompletions([...completions, data])
+    const key = `${habitId}-${date}`
+    const currentlyPending = pendingChanges.current[key]
+
+    if (currentlyPending) {
+      // User reversed their action before sync
+      delete pendingChanges.current[key]
+    } else {
+      // We don't have the existingCompletion from current closure reliably since we use functional update,
+      // but we wait for the update or just rely on finding it in the 'completions' array from closure.
+      // Actually, 'completions' in closure is fine for finding the ORIGINAL state before this click.
+      const existingInClosure = completions.find(
+        c => c.habit_id === habitId && c.completed_date === date
+      )
+      pendingChanges.current[key] = {
+        habitId,
+        date,
+        toState: !existingInClosure,
+        originalId: existingInClosure?.id
       }
     }
 
-    router.refresh()
+    if (syncTimeout.current) clearTimeout(syncTimeout.current)
+
+    syncTimeout.current = setTimeout(async () => {
+      const changes = Object.values(pendingChanges.current)
+      pendingChanges.current = {} // clear queue
+      if (changes.length === 0) return
+
+      const toDelete = changes.filter(c => !c.toState && c.originalId && !c.originalId.startsWith('temp-')).map(c => c.originalId!)
+      const toInsert = changes.filter(c => c.toState).map(c => ({
+        habit_id: c.habitId,
+        user_id: user.id,
+        completed_date: c.date,
+      }))
+
+      let newInserted: any[] = []
+
+      try {
+        if (toDelete.length > 0) {
+          await supabase.from('habit_completions').delete().in('id', toDelete)
+        }
+
+        if (toInsert.length > 0) {
+          const { data, error } = await supabase.from('habit_completions').insert(toInsert).select()
+          if (!error && data) {
+            newInserted = data
+          }
+        }
+      } catch (e) {
+        console.error('Error syncing habit completions:', e)
+      }
+
+      // Replace temporary entries with real ones from DB
+      if (newInserted.length > 0) {
+        setCompletions(prev => {
+          // Only filter out temp- prefixed IDs that match the habitId and completed_date of the new inserts
+          const newInsertedSet = new Set(newInserted.map(c => `${c.habit_id}-${c.completed_date}`))
+          const filtered = prev.filter(c => {
+            if (c.id.startsWith('temp-')) {
+              const key = `${c.habit_id}-${c.completed_date}`
+              if (newInsertedSet.has(key)) return false
+            }
+            return true
+          })
+          return [...filtered, ...newInserted]
+        })
+      }
+
+      router.refresh()
+    }, 1000)
   }
 
   function openNewHabitModal() {
