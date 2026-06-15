@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Habit, HabitCompletion, EnergyLog, Task } from '@/lib/types'
@@ -58,7 +58,13 @@ export function AnalyticsContent({
   const pendingChanges = useRef<{
     [key: string]: { habitId: string, date: string, toState: boolean, originalId?: string }
   }>({})
-  const syncTimeout = useRef<NodeJS.Timeout | null>(null)
+  const syncTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (syncTimeout.current) clearTimeout(syncTimeout.current)
+    }
+  }, [])
 
   
   const { selectedProjectId, projects } = useProject()
@@ -123,12 +129,9 @@ export function AnalyticsContent({
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    let existingCompletionId: string | undefined
-
     setCompletions(prev => {
       const existing = prev.find(c => c.habit_id === habitId && c.completed_date === date)
       if (existing) {
-        existingCompletionId = existing.id
         return prev.filter(c => c.id !== existing.id)
       } else {
         const tempId = `temp-${Date.now()}-${Math.random()}`
@@ -167,8 +170,9 @@ export function AnalyticsContent({
     if (syncTimeout.current) clearTimeout(syncTimeout.current)
 
     syncTimeout.current = setTimeout(async () => {
-      const changes = Object.values(pendingChanges.current)
+      const batch = pendingChanges.current
       pendingChanges.current = {} // clear queue
+      const changes = Object.values(batch)
       if (changes.length === 0) return
 
       const toDelete = changes.filter(c => !c.toState && c.originalId && !c.originalId.startsWith('temp-')).map(c => c.originalId!)
@@ -179,20 +183,32 @@ export function AnalyticsContent({
       }))
 
       let newInserted: any[] = []
+      let syncFailed = false
 
       try {
         if (toDelete.length > 0) {
-          await supabase.from('habit_completions').delete().in('id', toDelete)
+          const { error } = await supabase.from('habit_completions').delete().in('id', toDelete)
+          if (error) {
+            syncFailed = true
+          }
         }
 
-        if (toInsert.length > 0) {
+        if (!syncFailed && toInsert.length > 0) {
           const { data, error } = await supabase.from('habit_completions').insert(toInsert).select()
-          if (!error && data) {
+          if (error) {
+            syncFailed = true
+          } else if (data) {
             newInserted = data
           }
         }
       } catch (e) {
-        console.error('Error syncing habit completions:', e)
+        syncFailed = true
+      }
+
+      if (syncFailed) {
+        toast.error('Failed to sync habit completions. Please try again.')
+        pendingChanges.current = { ...batch, ...pendingChanges.current }
+        return
       }
 
       // Replace temporary entries with real ones from DB
