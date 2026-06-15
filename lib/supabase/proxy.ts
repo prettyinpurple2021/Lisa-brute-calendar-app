@@ -42,7 +42,9 @@ export async function updateSession(request: NextRequest) {
       request.nextUrl.pathname.startsWith('/analytics') ||
       request.nextUrl.pathname.startsWith('/ai-chat') ||
       request.nextUrl.pathname.startsWith('/files') ||
-      request.nextUrl.pathname.startsWith('/settings')) &&
+      (request.nextUrl.pathname === '/settings' || request.nextUrl.pathname.startsWith('/settings/')) ||
+      (request.nextUrl.pathname === '/focus' || request.nextUrl.pathname.startsWith('/focus/')) ||
+      (request.nextUrl.pathname === '/projects' || request.nextUrl.pathname.startsWith('/projects/'))) &&
     !user
   ) {
     const url = request.nextUrl.clone()
