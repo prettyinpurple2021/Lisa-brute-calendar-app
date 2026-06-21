@@ -14,7 +14,6 @@ _Last updated: June 2026_
 
 ### Settings (Priority 1)
 - [ ] Connect profile avatar upload to Supabase storage
-- [ ] Persist theme preference to `user_preferences` table
 - [ ] Email/password change functionality
 - [ ] Account deletion with confirmation dialog
 - [ ] Export user data (expand beyond current supported subset)
@@ -26,7 +25,7 @@ _Last updated: June 2026_
 - [ ] Chat history storage in database
 - [ ] Context awareness — reference tasks, events, habits in chat
 
-### Files System (Priority 3)
+### File System (Priority 3)
 - [ ] File upload UI with drag-and-drop
 - [ ] File preview (images, PDFs)
 - [ ] Folder/tag organization
