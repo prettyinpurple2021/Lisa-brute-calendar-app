@@ -1,12 +1,10 @@
+import type { Dispatch, SetStateAction } from 'react'
 import { Clock, Loader2 } from 'lucide-react'
+import type { Preferences } from '../preferences'
 
 interface FocusTimerSettingsProps {
-  preferences: {
-    focus_timer_duration: number
-    break_duration: number
-    long_break_duration: number
-  }
-  setPreferences: (prefs: any) => void
+  preferences: Preferences
+  setPreferences: Dispatch<SetStateAction<Preferences>>
   loadingPrefs: boolean
 }
 

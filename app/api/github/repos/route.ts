@@ -1,6 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+interface GithubRepo {
+  id: number
+  name: string
+  full_name: string
+  html_url: string
+  description: string | null
+  private: boolean
+  updated_at: string
+}
+
 export async function GET() {
   const supabase = await createClient()
   
@@ -43,10 +53,10 @@ export async function GET() {
       throw new Error('Failed to fetch repositories')
     }
 
-    const repos = await response.json()
+    const repos: GithubRepo[] = await response.json()
     
     // Return simplified repo data
-    const simplifiedRepos = repos.map((repo: any) => ({
+    const simplifiedRepos = repos.map((repo) => ({
       id: repo.id,
       name: repo.name,
       full_name: repo.full_name,
