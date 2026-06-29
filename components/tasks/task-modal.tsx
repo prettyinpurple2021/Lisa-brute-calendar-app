@@ -1,11 +1,13 @@
-import { Task, AppContext, Project } from '@/lib/types'
+import type { FormEvent } from 'react'
+import type { Task, AppContext, Project } from '@/lib/types'
 import { APP_FILTERS, PRIORITIES, STATUSES } from '@/app/tasks/constants'
 import { Repeat, Trash2, X } from 'lucide-react'
+import type { TaskFormData } from './task-form-data'
 
 interface TaskModalProps {
-  formData: any
-  setFormData: (data: any) => void
-  handleSubmit: (e: React.FormEvent) => void
+  formData: TaskFormData
+  setFormData: (data: TaskFormData) => void
+  handleSubmit: (e: FormEvent<HTMLFormElement>) => void
   handleDelete: () => void
   saving: boolean
   editingTask: Task | null
@@ -30,7 +32,12 @@ export function TaskModal({
         <div className="neo-card overflow-hidden">
           <div className="bg-accent px-4 py-3 flex items-center justify-between border-b-4 border-foreground">
             <h3 className="font-bold">{editingTask ? 'Edit Task' : 'New Task'}</h3>
-            <button onClick={() => setShowModal(false)} className="hover:bg-foreground/10 p-1 rounded">
+            <button
+              type="button"
+              aria-label="Close task modal"
+              onClick={() => setShowModal(false)}
+              className="hover:bg-foreground/10 p-1 rounded"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -179,6 +186,7 @@ export function TaskModal({
               {editingTask && (
                 <button
                   type="button"
+                  aria-label="Delete task"
                   onClick={handleDelete}
                   className="neo-btn bg-destructive text-destructive-foreground p-2"
                 >

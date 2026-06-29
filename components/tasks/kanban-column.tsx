@@ -1,4 +1,5 @@
-import { Task } from '@/lib/types'
+import type { MouseEvent } from 'react'
+import type { Task } from '@/lib/types'
 import { TaskCard } from './task-card'
 
 interface KanbanColumnProps {
@@ -6,7 +7,7 @@ interface KanbanColumnProps {
   tasks: Task[]
   color: string
   openEditTaskModal: (task: Task) => void
-  toggleTimeTracking: (task: Task, e: React.MouseEvent) => void
+  toggleTimeTracking: (task: Task, e: MouseEvent<HTMLButtonElement>) => void
 }
 
 export function KanbanColumn({

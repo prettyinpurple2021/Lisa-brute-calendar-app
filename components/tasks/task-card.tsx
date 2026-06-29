@@ -1,23 +1,38 @@
-import { Task } from '@/lib/types'
+import type { KeyboardEvent, MouseEvent } from 'react'
+import type { Task } from '@/lib/types'
 import { APP_FILTERS, PRIORITIES } from '@/app/tasks/constants'
 import { Clock, Pause, Play, Repeat } from 'lucide-react'
 
 interface TaskCardProps {
   task: Task
   openEditTaskModal: (task: Task) => void
-  toggleTimeTracking: (task: Task, e: React.MouseEvent) => void
+  toggleTimeTracking: (task: Task, e: MouseEvent<HTMLButtonElement>) => void
 }
 
 export function TaskCard({ task, openEditTaskModal, toggleTimeTracking }: TaskCardProps) {
-  const priorityConfig = PRIORITIES.find(p => p.id === task.priority)!
+  const priorityConfig =
+    PRIORITIES.find(p => p.id === task.priority) ??
+    PRIORITIES.find(p => p.id === 'medium') ??
+    PRIORITIES[0]
   const appConfig = APP_FILTERS.find(a => a.id === task.app_context)
+  const timerLabel = task.is_tracking ? 'Stop timer' : 'Start timer'
+
+  function handleCardKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      openEditTaskModal(task)
+    }
+  }
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={`neo-card bg-card p-3 cursor-pointer hover:translate-y-[-2px] transition-transform ${
         task.is_tracking ? 'ring-2 ring-lime ring-offset-2' : ''
       }`}
       onClick={() => openEditTaskModal(task)}
+      onKeyDown={handleCardKeyDown}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-1 flex-wrap">
@@ -32,13 +47,15 @@ export function TaskCard({ task, openEditTaskModal, toggleTimeTracking }: TaskCa
         </div>
         {task.status !== 'done' && (
           <button
+            type="button"
+            aria-label={timerLabel}
             onClick={(e) => toggleTimeTracking(task, e)}
             className={`p-1.5 rounded-lg transition-all ${
               task.is_tracking
                 ? 'bg-lime neo-border animate-pulse'
                 : 'bg-muted hover:bg-muted/80 neo-border border-2'
             }`}
-            title={task.is_tracking ? 'Stop timer' : 'Start timer'}
+            title={timerLabel}
           >
             {task.is_tracking ? (
               <Pause className="w-3.5 h-3.5" />
