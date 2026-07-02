@@ -1,12 +1,11 @@
+import type { Dispatch, SetStateAction } from 'react'
 import { Bell, Volume2, Loader2 } from 'lucide-react'
+import type { Preferences } from '../preferences'
 import { ToggleSwitch } from './ToggleSwitch'
 
 interface NotificationSettingsProps {
-  preferences: {
-    email_reminders: boolean
-    sound_enabled: boolean
-  }
-  setPreferences: (prefs: any) => void
+  preferences: Preferences
+  setPreferences: Dispatch<SetStateAction<Preferences>>
   pushNotifications: {
     isSupported: boolean
     isSubscribed: boolean

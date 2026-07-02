@@ -182,7 +182,7 @@ export function AnalyticsContent({
         completed_date: c.date,
       }))
 
-      let newInserted: any[] = []
+      let newInserted: HabitCompletion[] = []
       let syncFailed = false
 
       try {

@@ -9,6 +9,7 @@ import toast from 'react-hot-toast'
 import { Save, Loader2 } from 'lucide-react'
 import { usePushNotifications } from '@/lib/use-push-notifications'
 import { exportToCSV, exportToPDF, ExportType } from '@/lib/export-utils'
+import type { Preferences, Theme } from './preferences'
 
 import { ProfileSettings } from './components/ProfileSettings'
 import { GithubSettings } from './components/GithubSettings'
@@ -18,20 +19,6 @@ import { FocusTimerSettings } from './components/FocusTimerSettings'
 import { CalendarSettings } from './components/CalendarSettings'
 import { ExportSettings } from './components/ExportSettings'
 import { AccountSettings } from './components/AccountSettings'
-
-type Theme = 'light' | 'dark' | 'auto'
-type WeekStart = 'sunday' | 'monday'
-
-interface Preferences {
-  theme: Theme
-  email_reminders: boolean
-  push_notifications: boolean
-  week_start_day: WeekStart
-  focus_timer_duration: number
-  break_duration: number
-  long_break_duration: number
-  sound_enabled: boolean
-}
 
 interface SettingsContentProps {
   user: User
@@ -169,13 +156,16 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
       const filename = `${type}-export-${new Date().toISOString().split('T')[0]}`
 
       if (format === 'csv') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const csvString = await exportToCSV(data as any)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const blob = new Blob([csvString as any], { type: 'text/csv;charset=utf-8;' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
         link.download = `${filename}.csv`
         link.click()
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         exportToPDF(data as any, filename)
       }
 
@@ -215,7 +205,7 @@ export function SettingsContent({ user, profile }: SettingsContentProps) {
       setSaveStatus('saved')
       toast.success('Settings saved successfully!')
 
-      if (preferences.theme !== (profile as any)?.preferences?.theme) {
+      if (preferences.theme !== (profile as Profile & { preferences?: { theme?: Theme } })?.preferences?.theme) {
         window.location.reload()
       }
     } catch (error) {
