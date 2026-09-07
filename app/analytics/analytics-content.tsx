@@ -56,7 +56,7 @@ export function AnalyticsContent({
   })
   const [saving, setSaving] = useState(false)
   const pendingChanges = useRef<{
-    [key: string]: { habitId: string, date: string, toState: boolean, originalId?: string }
+    [key: string]: { habitId: string, date: string, toState: boolean, originalId?: string, originalCompletion?: HabitCompletion }
   }>({})
   const syncTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -163,7 +163,8 @@ export function AnalyticsContent({
         habitId,
         date,
         toState: !existingInClosure,
-        originalId: existingInClosure?.id
+        originalId: existingInClosure?.id,
+        originalCompletion: existingInClosure
       }
     }
 
@@ -207,7 +208,25 @@ export function AnalyticsContent({
 
       if (syncFailed) {
         toast.error('Failed to sync habit completions. Please try again.')
-        pendingChanges.current = { ...batch, ...pendingChanges.current }
+        // Roll back the optimistic updates for this batch so the UI reflects the
+        // persisted (server) state instead of silently showing unsaved changes.
+        setCompletions(prev => {
+          let next = prev
+          for (const c of changes) {
+            if (c.toState) {
+              // We optimistically added a temp completion for this habit/date; remove it.
+              next = next.filter(
+                x => !(x.id.startsWith('temp-') && x.habit_id === c.habitId && x.completed_date === c.date)
+              )
+            } else if (c.originalCompletion) {
+              // We optimistically removed an existing completion; restore it.
+              if (!next.some(x => x.id === c.originalCompletion!.id)) {
+                next = [...next, c.originalCompletion!]
+              }
+            }
+          }
+          return next
+        })
         return
       }
 
