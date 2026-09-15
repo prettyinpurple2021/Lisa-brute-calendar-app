@@ -93,7 +93,10 @@ export async function GET(request: Request) {
       headers.join(','),
       ...data.map(row => 
         headers.map(h => {
-          const val = String(row[h] || '').replace(/"/g, '""')
+          let val = String(row[h] ?? '').replace(/"/g, '""')
+          if (/^\s*[=+\-@]/.test(val)) {
+            val = "'" + val
+          }
           return `"${val}"`
         }).join(',')
       )

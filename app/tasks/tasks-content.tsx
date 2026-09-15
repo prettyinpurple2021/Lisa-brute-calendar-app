@@ -3,81 +3,46 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Task, AppContext, Project } from '@/lib/types'
+import type { Task, AppContext } from '@/lib/types'
 import { useProject } from '@/lib/project-context'
 import toast from 'react-hot-toast'
-import {
-  Plus,
-  X,
-  Trash2,
-  Calendar,
-  CheckSquare,
-  FileText,
-  BarChart2,
-  MessageCircle,
-  Folder,
-  Settings,
-  Filter,
-  GripVertical,
-  Check,
-  FolderKanban,
-  Repeat,
-  Clock,
-  Play,
-  Pause,
-} from 'lucide-react'
+import type { FormEvent, MouseEvent } from 'react'
+import { Plus } from 'lucide-react'
+import { APP_FILTERS } from './constants'
+import { KanbanColumn } from '@/components/tasks/kanban-column'
+import { TaskModal } from '@/components/tasks/task-modal'
+import type { TaskFormData } from '@/components/tasks/task-form-data'
 
 interface TasksContentProps {
   initialTasks: Task[]
 }
 
-const APP_FILTERS = [
-  { id: null, name: 'All Apps', icon: Filter, color: 'bg-muted' },
-  { id: 'calendar', name: 'Calendar', icon: Calendar, color: 'bg-secondary' },
-  { id: 'tasks', name: 'Tasks', icon: CheckSquare, color: 'bg-accent' },
-  { id: 'notes', name: 'Notes', icon: FileText, color: 'bg-lime' },
-  { id: 'analytics', name: 'Analytics', icon: BarChart2, color: 'bg-neon-purple' },
-  { id: 'ai-chat', name: 'AI Chat', icon: MessageCircle, color: 'bg-hot-orange' },
-  { id: 'files', name: 'Files', icon: Folder, color: 'bg-electric-blue' },
-  { id: 'settings', name: 'Settings', icon: Settings, color: 'bg-muted' },
-] as const
-
-const PRIORITIES = [
-  { id: 'urgent', label: 'Urgent', color: 'bg-destructive text-destructive-foreground' },
-  { id: 'high', label: 'High', color: 'bg-hot-orange text-foreground' },
-  { id: 'medium', label: 'Medium', color: 'bg-accent text-accent-foreground' },
-  { id: 'low', label: 'Low', color: 'bg-muted text-muted-foreground' },
-] as const
-
-const STATUSES = [
-  { id: 'todo', label: 'To Do', color: 'bg-muted' },
-  { id: 'in_progress', label: 'In Progress', color: 'bg-secondary' },
-  { id: 'done', label: 'Done', color: 'bg-lime' },
-] as const
+function createTaskFormData(appContext: AppContext | null, projectId: string | null): TaskFormData {
+  return {
+    title: '',
+    description: '',
+    priority: 'medium',
+    status: 'todo',
+    appContext,
+    dueDate: '',
+    projectId,
+    isRecurring: false,
+    recurrencePattern: 'daily',
+    recurrenceInterval: 1,
+    timeEstimate: '',
+  }
+}
 
 export function TasksContent({ initialTasks }: TasksContentProps) {
   const router = useRouter()
+  const { selectedProjectId, projects } = useProject()
   const [tasks, setTasks] = useState(initialTasks)
   const [appFilter, setAppFilter] = useState<AppContext | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'medium' as Task['priority'],
-    status: 'todo' as Task['status'],
-    appContext: null as AppContext | null,
-    dueDate: '',
-    projectId: null as string | null,
-    isRecurring: false,
-    recurrencePattern: 'daily' as 'daily' | 'weekly' | 'monthly',
-    recurrenceInterval: 1,
-    timeEstimate: '',
-  })
+  const [formData, setFormData] = useState<TaskFormData>(() => createTaskFormData(null, selectedProjectId))
   const [saving, setSaving] = useState(false)
   const [trackingTaskId, setTrackingTaskId] = useState<string | null>(null)
-  
-  const { selectedProjectId, projects } = useProject()
 
   // Find currently tracking task
   useEffect(() => {
@@ -100,19 +65,7 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
 
   function openNewTaskModal() {
     setEditingTask(null)
-    setFormData({
-      title: '',
-      description: '',
-      priority: 'medium',
-      status: 'todo',
-      appContext: appFilter,
-      dueDate: '',
-      projectId: selectedProjectId,
-      isRecurring: false,
-      recurrencePattern: 'daily',
-      recurrenceInterval: 1,
-      timeEstimate: '',
-    })
+    setFormData(createTaskFormData(appFilter, selectedProjectId))
     setShowModal(true)
   }
 
@@ -134,7 +87,7 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     setShowModal(true)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!formData.title.trim()) return
 
@@ -223,7 +176,7 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     router.refresh()
   }
 
-  async function toggleTimeTracking(task: Task, e: React.MouseEvent) {
+  async function toggleTimeTracking(task: Task, e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -311,111 +264,6 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
     router.refresh()
   }
 
-  function TaskCard({ task }: { task: Task }) {
-    const priorityConfig = PRIORITIES.find(p => p.id === task.priority)!
-    const appConfig = APP_FILTERS.find(a => a.id === task.app_context)
-
-    return (
-      <div
-        className={`neo-card bg-card p-3 cursor-pointer hover:translate-y-[-2px] transition-transform ${
-          task.is_tracking ? 'ring-2 ring-lime ring-offset-2' : ''
-        }`}
-        onClick={() => openEditTaskModal(task)}
-      >
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className={`px-2 py-0.5 rounded text-xs font-bold ${priorityConfig.color}`}>
-              {priorityConfig.label}
-            </span>
-            {appConfig && appConfig.id && (
-              <span className={`px-2 py-0.5 rounded text-xs font-bold ${appConfig.color} text-foreground`}>
-                {appConfig.name}
-              </span>
-            )}
-          </div>
-          {task.status !== 'done' && (
-            <button
-              onClick={(e) => toggleTimeTracking(task, e)}
-              className={`p-1.5 rounded-lg transition-all ${
-                task.is_tracking 
-                  ? 'bg-lime neo-border animate-pulse' 
-                  : 'bg-muted hover:bg-muted/80 neo-border border-2'
-              }`}
-              title={task.is_tracking ? 'Stop timer' : 'Start timer'}
-            >
-              {task.is_tracking ? (
-                <Pause className="w-3.5 h-3.5" />
-              ) : (
-                <Play className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
-        </div>
-        <p className="font-bold mb-1 line-clamp-2">{task.title}</p>
-        {task.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
-        )}
-        {task.due_date && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Due: {new Date(task.due_date).toLocaleDateString()}
-          </p>
-        )}
-        <div className="flex items-center gap-2 mt-2 flex-wrap">
-          {task.is_recurring && (
-            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-secondary rounded-full">
-              <Repeat className="w-3 h-3" />
-              {task.recurrence_pattern}
-            </span>
-          )}
-          {task.time_estimate_minutes && (
-            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-muted rounded-full">
-              <Clock className="w-3 h-3" />
-              {task.time_estimate_minutes}m
-            </span>
-          )}
-          {task.time_spent_minutes > 0 && (
-            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-lime rounded-full">
-              {task.time_spent_minutes}m tracked
-            </span>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  function KanbanColumn({ 
-    title, 
-    tasks, 
-    status, 
-    color 
-  }: { 
-    title: string
-    tasks: Task[]
-    status: Task['status']
-    color: string 
-  }) {
-    return (
-      <div className="flex-1 min-w-[280px]">
-        <div className={`${color} neo-border p-3 rounded-t-lg flex items-center justify-between`}>
-          <h3 className="font-black">{title}</h3>
-          <span className="px-2 py-0.5 bg-foreground/20 rounded-full text-sm font-bold">
-            {tasks.length}
-          </span>
-        </div>
-        <div className="neo-border border-t-0 rounded-b-lg p-3 min-h-[300px] space-y-3 bg-muted/30">
-          {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-          {tasks.length === 0 && (
-            <p className="text-center text-muted-foreground text-sm py-8">
-              No tasks
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -450,186 +298,41 @@ export function TasksContent({ initialTasks }: TasksContentProps) {
 
       {/* Kanban Board */}
       <div className="flex gap-4 overflow-x-auto pb-4">
-        <KanbanColumn title="To Do" tasks={todoTasks} status="todo" color="bg-muted" />
-        <KanbanColumn title="In Progress" tasks={inProgressTasks} status="in_progress" color="bg-secondary" />
-        <KanbanColumn title="Done" tasks={doneTasks} status="done" color="bg-lime" />
+        <KanbanColumn
+          title="To Do"
+          tasks={todoTasks}
+          color="bg-muted"
+          openEditTaskModal={openEditTaskModal}
+          toggleTimeTracking={toggleTimeTracking}
+        />
+        <KanbanColumn
+          title="In Progress"
+          tasks={inProgressTasks}
+          color="bg-secondary"
+          openEditTaskModal={openEditTaskModal}
+          toggleTimeTracking={toggleTimeTracking}
+        />
+        <KanbanColumn
+          title="Done"
+          tasks={doneTasks}
+          color="bg-lime"
+          openEditTaskModal={openEditTaskModal}
+          toggleTimeTracking={toggleTimeTracking}
+        />
       </div>
 
       {/* Task Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-foreground/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-lg bounce-in">
-            <div className="neo-card overflow-hidden">
-              <div className="bg-accent px-4 py-3 flex items-center justify-between border-b-4 border-foreground">
-                <h3 className="font-bold">{editingTask ? 'Edit Task' : 'New Task'}</h3>
-                <button onClick={() => setShowModal(false)} className="hover:bg-foreground/10 p-1 rounded">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold mb-1">Title</label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="neo-input w-full"
-                    placeholder="What needs to be done?"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold mb-1">Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="neo-input w-full h-20 resize-none"
-                    placeholder="Optional details..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold mb-1">Priority</label>
-                    <select
-                      value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
-                      className="neo-input w-full"
-                    >
-                      {PRIORITIES.map((p) => (
-                        <option key={p.id} value={p.id}>{p.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold mb-1">Status</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as Task['status'] })}
-                      className="neo-input w-full"
-                    >
-                      {STATUSES.map((s) => (
-                        <option key={s.id} value={s.id}>{s.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold mb-1">App Context</label>
-                    <select
-                      value={formData.appContext || ''}
-                      onChange={(e) => setFormData({ ...formData, appContext: e.target.value as AppContext || null })}
-                      className="neo-input w-full"
-                    >
-                      <option value="">None</option>
-                      {APP_FILTERS.slice(1).map((a) => (
-                        <option key={a.id} value={a.id!}>{a.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold mb-1">Due Date</label>
-                    <input
-                      type="date"
-                      value={formData.dueDate}
-                      onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                      className="neo-input w-full"
-                    />
-                  </div>
-                </div>
-
-                {/* Project Selector */}
-                <div>
-                  <label className="block text-sm font-bold mb-1">Project</label>
-                  <select
-                    value={formData.projectId || ''}
-                    onChange={(e) => setFormData({ ...formData, projectId: e.target.value || null })}
-                    className="neo-input w-full"
-                  >
-                    <option value="">No Project</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Time Estimate */}
-                <div>
-                  <label className="block text-sm font-bold mb-1">Time Estimate (minutes)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.timeEstimate}
-                    onChange={(e) => setFormData({ ...formData, timeEstimate: e.target.value })}
-                    className="neo-input w-full"
-                    placeholder="e.g., 30"
-                  />
-                </div>
-
-                {/* Recurring */}
-                <div className="p-3 border-2 border-dashed border-foreground/30 rounded-xl">
-                  <label className="flex items-center gap-2 cursor-pointer mb-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.isRecurring}
-                      onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
-                      className="w-5 h-5 rounded border-2 border-black"
-                    />
-                    <Repeat className="w-4 h-4" />
-                    <span className="font-bold">Recurring Task</span>
-                  </label>
-                  
-                  {formData.isRecurring && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-sm">Repeat every</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max="30"
-                        value={formData.recurrenceInterval}
-                        onChange={(e) => setFormData({ ...formData, recurrenceInterval: parseInt(e.target.value) || 1 })}
-                        className="neo-input w-16 text-center"
-                      />
-                      <select
-                        value={formData.recurrencePattern}
-                        onChange={(e) => setFormData({ ...formData, recurrencePattern: e.target.value as 'daily' | 'weekly' | 'monthly' })}
-                        className="neo-input"
-                      >
-                        <option value="daily">day(s)</option>
-                        <option value="weekly">week(s)</option>
-                        <option value="monthly">month(s)</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  {editingTask && (
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      className="neo-btn bg-destructive text-destructive-foreground p-2"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="neo-btn flex-1 bg-primary text-primary-foreground disabled:opacity-50"
-                  >
-                    {saving ? 'Saving...' : editingTask ? 'Update Task' : 'Create Task'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <TaskModal
+          formData={formData}
+          setFormData={setFormData}
+          handleSubmit={handleSubmit}
+          handleDelete={handleDelete}
+          saving={saving}
+          editingTask={editingTask}
+          projects={projects}
+          setShowModal={setShowModal}
+        />
       )}
     </div>
   )
